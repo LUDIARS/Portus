@@ -1,0 +1,14 @@
+{
+  "name": "realtime-socket",
+  "description": "WebSocket (RFC 6455) のフレーム処理・ハンドシェイク・接続・サーバ・クライアント。",
+  "presetRules": [],
+  "templateRules": [],
+  "membership": [
+    {
+      "pathPattern": "(^|/)src/ws/(?:.*/)?[^/]+$"
+    },
+    {
+      "pathPattern": "(^|/)test/ws\\.test\\.ts$"
+    }
+  ]
+}

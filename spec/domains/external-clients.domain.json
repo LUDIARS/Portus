@@ -1,0 +1,20 @@
+{
+  "name": "external-clients",
+  "description": "外部サービスへの最小クライアント。AWS (SigV4 / S3 / 認証情報)、Redis (RESP)、AI / Notion API、共通の JSON fetch。",
+  "presetRules": [],
+  "templateRules": [],
+  "membership": [
+    {
+      "pathPattern": "(^|/)src/aws/(?:.*/)?[^/]+$"
+    },
+    {
+      "pathPattern": "(^|/)src/redis/(?:.*/)?[^/]+$"
+    },
+    {
+      "pathPattern": "(^|/)src/ai/(?:.*/)?[^/]+$"
+    },
+    {
+      "pathPattern": "(^|/)src/net/(?:.*/)?[^/]+$"
+    }
+  ]
+}

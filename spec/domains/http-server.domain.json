@@ -1,0 +1,17 @@
+{
+  "name": "http-server",
+  "description": "HTTP の受け口。表駆動ルータ、ボディ読み取りと上限、応答の型変換、ミドルウェア、アクセスログ付きサーバ。",
+  "presetRules": [],
+  "templateRules": [],
+  "membership": [
+    {
+      "pathPattern": "(^|/)src/http/(?:.*/)?[^/]+$"
+    },
+    {
+      "pathPattern": "(^|/)test/http\\.test\\.ts$"
+    },
+    {
+      "pathPattern": "(^|/)test/server\\.test\\.ts$"
+    }
+  ]
+}

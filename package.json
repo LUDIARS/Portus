@@ -1,0 +1,48 @@
+{
+  "name": "@ludiars/portus",
+  "version": "0.1.0",
+  "description": "LUDIARS の Node サーバ基盤。脆弱性報告の多い npm 依存を使わず、HTTP ルータ / WebSocket / Web Push / S3 / Redis / AI クライアント / 構造化ログ / ホットリロードを実行時依存ゼロで提供する。",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LUDIARS/Portus.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "portus-dev": "bin/portus-dev.js"
+  },
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./http": { "types": "./dist/http/index.d.ts", "default": "./dist/http/index.js" },
+    "./ws": { "types": "./dist/ws/index.d.ts", "default": "./dist/ws/index.js" },
+    "./push": { "types": "./dist/push/index.d.ts", "default": "./dist/push/index.js" },
+    "./aws": { "types": "./dist/aws/index.d.ts", "default": "./dist/aws/index.js" },
+    "./redis": { "types": "./dist/redis/index.d.ts", "default": "./dist/redis/index.js" },
+    "./ai": { "types": "./dist/ai/index.d.ts", "default": "./dist/ai/index.js" },
+    "./net": { "types": "./dist/net/index.d.ts", "default": "./dist/net/index.js" },
+    "./log": { "types": "./dist/log/index.d.ts", "default": "./dist/log/index.js" },
+    "./hot": { "types": "./dist/hot/index.d.ts", "default": "./dist/hot/index.js" },
+    "./env": { "types": "./dist/env.d.ts", "default": "./dist/env.js" },
+    "./id": { "types": "./dist/id.d.ts", "default": "./dist/id.js" }
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsc -p tsconfig.test.json && node --test \"dist-test/test/*.test.js\""
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "typescript": "5.9.3"
+  }
+}

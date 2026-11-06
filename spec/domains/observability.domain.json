@@ -1,0 +1,11 @@
+{
+  "name": "observability",
+  "description": "構造化ログ。レベル、出力形式、出力先、秘匿キーのマスク、console ブリッジ、プロセス例外の記録。",
+  "presetRules": [],
+  "templateRules": [],
+  "membership": [
+    {
+      "pathPattern": "(^|/)src/log/(?:.*/)?[^/]+$"
+    }
+  ]
+}

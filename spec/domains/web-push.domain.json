@@ -1,0 +1,14 @@
+{
+  "name": "web-push",
+  "description": "Web Push の送信。VAPID 署名、aes128gcm 暗号化、送信先 push サービスの許可判定。",
+  "presetRules": [],
+  "templateRules": [],
+  "membership": [
+    {
+      "pathPattern": "(^|/)src/push/(?:.*/)?[^/]+$"
+    },
+    {
+      "pathPattern": "(^|/)test/push\\.test\\.ts$"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "name": "foundation-runtime",
+  "description": "ライブラリの土台と開発実行環境。ホットリロード、.env、ID、外部入力の安全なオブジェクト化、入口、開発ランチャー。",
+  "presetRules": [],
+  "templateRules": [],
+  "membership": [
+    {
+      "pathPattern": "(^|/)src/hot/(?:.*/)?[^/]+$"
+    },
+    {
+      "pathPattern": "(^|/)src/env\\.ts$"
+    },
+    {
+      "pathPattern": "(^|/)src/id\\.ts$"
+    },
+    {
+      "pathPattern": "(^|/)src/safeObject\\.ts$"
+    },
+    {
+      "pathPattern": "(^|/)src/index\\.ts$"
+    },
+    {
+      "pathPattern": "(^|/)bin/(?:.*/)?[^/]+$"
+    },
+    {
+      "pathPattern": "(^|/)test/hot\\.test\\.ts$"
+    },
+    {
+      "pathPattern": "(^|/)test/misc\\.test\\.ts$"
+    }
+  ]
+}
