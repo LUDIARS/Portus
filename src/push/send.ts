@@ -1,3 +1,4 @@
+import { request } from "../net/request.js"
 import { encryptPayload, SubscriptionKeys } from "./encrypt.js"
 import { DEFAULT_PUSH_HOSTS, isAllowedEndpoint } from "./endpoint.js"
 import { createVapidAuthorization, VapidKeys } from "./vapid.js"
@@ -25,10 +26,10 @@ export async function sendNotification(sub: PushSubscription, payload: string, v
 	const ttlSec = options.ttlSec ?? 24 * 60 * 60;
 
 	const body = encryptPayload(sub.keys, Buffer.from(payload, "utf8"));
-	const res = await fetch(sub.endpoint, {
+	const res = await request(sub.endpoint, {
 		method: "POST",
-		redirect: "error",
-		signal: AbortSignal.timeout(options.timeoutMs ?? 10000),
+		timeoutMs: options.timeoutMs ?? 10000,
+		minTlsVersion: "TLSv1.2",	//push サービスによっては TLS 1.2 まで
 		headers: {
 			"Authorization": createVapidAuthorization(vapid, new URL(sub.endpoint).origin),
 			"Content-Encoding": "aes128gcm",
@@ -38,9 +39,10 @@ export async function sendNotification(sub: PushSubscription, payload: string, v
 		body,
 	});
 
-	if (!res.ok) {
-		const text = (await res.text()).substring(0, 200);
+	if (res.status < 200 || res.status >= 300) {
+		const text = await res.text(200);
 		throw new PushError(`push service responded ${res.status}: ${text}`, res.status);
 	}
+	res.close();
 	return res.status;
 }

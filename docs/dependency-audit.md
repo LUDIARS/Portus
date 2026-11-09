@@ -27,6 +27,7 @@
 | `@google/generative-ai` 0.21 | 非推奨 (後継 `@google/genai`)。API キーを URL クエリに載せる箇所があった | generateContent、models 一覧 | **自作** `portus/ai` (`GeminiClient`)。キーはヘッダ渡し、モデル名を検証してからパスに埋め込む |
 | `@notionhq/client` 2.x | 推移的依存 `node-fetch` v2 (上記) | users / databases.query / blocks.children / search / pages | **自作** `portus/ai` (`NotionClient`、SDK と同名メソッドのドロップイン) |
 | `redis` 4.7.0 | CVE-2021-29469 (monitor モードの ReDoS、v3 系) | GET / SET / HSET / HGETALL | **自作** `portus/redis` (RESP2、長さ上限付き) |
+| Node 組み込みの `fetch` (undici、Node 同梱) | undici の過去の報告 (CVE-2024-30260 リダイレクト先への Proxy-Authorization 漏えい、CVE-2025-22150 予測可能な multipart 境界 ほか)。既定で `accept-encoding: gzip, deflate` を送り、応答の圧縮 (gzip / Brotli) を勝手に展開する。`res.text()` に上限が無い (2026-11-09 に Node 22.22 で確認: 64 KB の gzip が 64 MB に展開された) | AI / S3 / Web Push / IMDS の通信 | **自作** `portus/net` の `request` (`node:tls` / `node:net` の上の HTTP/1.1。圧縮を頼まず、圧縮された応答は拒否、本文・ヘッダに上限、リダイレクトなし、名前解決は 1 回で IP を固定) |
 | `node-fetch` 2.7.0 | CVE-2022-0235、CVE-2020-15168 | 未使用 (Node 22 の fetch を使用) | **削除** |
 | `uuid` 8.3.2 / `uuidv4` | `uuidv4` は保守終了 | v4 生成のみ | **削除** → `crypto.randomUUID()` (`portus/id`) |
 | `dotenv` 16 | 報告なし (攻撃面縮小のため) | `.env` 読み込み | **自作** `portus/env` (KEY=VALUE のみ) |

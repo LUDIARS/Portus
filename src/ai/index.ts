@@ -1,4 +1,5 @@
 export { OpenAIClient } from "./openai.js"
 export { AnthropicClient } from "./anthropic.js"
+export type { AiClientOptions } from "./anthropic.js"
 export { GeminiClient } from "./gemini.js"
 export { NotionClient } from "./notion.js"
