@@ -1,3 +1,4 @@
+import { request } from "../net/request.js"
 import { resolveCredentials } from "./credentials.js"
 import { encodeKeyPath, signRequest } from "./sigv4.js"
 
@@ -19,15 +20,16 @@ export async function putObject(region: string, bucket: string, key: string, bod
 		headers: { "content-type": contentType },
 	}, await resolveCredentials());
 
-	const res = await fetch(`https://${host}${path}`, {
+	const res = await request(`https://${host}${path}`, {
 		method: "PUT",
 		headers,
 		body: payload,
-		redirect: "error",
-		signal: AbortSignal.timeout(30000),
+		timeoutMs: 30000,
+		minTlsVersion: "TLSv1.2",	//S3 のエンドポイントが TLS 1.3 を出すとは限らない
 	});
-	if (!res.ok) {
-		const text = (await res.text()).substring(0, 300);
+	if (res.status < 200 || res.status >= 300) {
+		const text = await res.text(300);
 		throw new Error(`S3 PutObject failed ${res.status}: ${text}`);
 	}
+	res.close();
 }

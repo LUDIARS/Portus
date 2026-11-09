@@ -1,6 +1,6 @@
 {
   "name": "@ludiars/portus",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "LUDIARS の Node サーバ基盤。脆弱性報告の多い npm 依存を使わず、HTTP ルータ / WebSocket / Web Push / S3 / Redis / AI クライアント / 構造化ログ / ホットリロードを実行時依存ゼロで提供する。",
   "type": "module",
   "repository": {

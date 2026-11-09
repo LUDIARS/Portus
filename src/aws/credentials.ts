@@ -1,6 +1,7 @@
 import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
+import { request, RequestOptions } from "../net/request.js"
 import { AwsCredentials } from "./sigv4.js"
 
 //aws-sdk v2 の既定チェーンのうち、この環境で使うものだけ:
@@ -47,25 +48,31 @@ function fromSharedFile(): AwsCredentials | null {
 	}
 }
 
+//IMDS はリンクローカルの平文 HTTP なので、ここだけ平文と内部アドレスを明示して許す
+const IMDS_OPTIONS = { allowPlaintext: true, allowInternalAddresses: true, timeoutMs: 1000, connectTimeoutMs: 1000, maxBodyBytes: 64 * 1024 } as const;
+
+async function imdsText(path: string, init: RequestOptions): Promise<string | null> {
+	const res = await request(`${IMDS}${path}`, { ...IMDS_OPTIONS, ...init });
+	if (res.status < 200 || res.status >= 300) {
+		res.close();
+		return null;
+	}
+	return res.text();
+}
+
 async function fromInstanceMetadata(): Promise<AwsCredentials | null> {
 	try {
-		const tokenRes = await fetch(`${IMDS}/latest/api/token`, {
-			method: "PUT",
-			headers: { "X-aws-ec2-metadata-token-ttl-seconds": "21600" },
-			signal: AbortSignal.timeout(1000),
-		});
-		if (!tokenRes.ok) return null;
-		const token = await tokenRes.text();
+		const token = await imdsText("/latest/api/token", { method: "PUT", headers: { "X-aws-ec2-metadata-token-ttl-seconds": "21600" } });
+		if (!token) return null;
 		const headers = { "X-aws-ec2-metadata-token": token };
 
-		const roleRes = await fetch(`${IMDS}/latest/meta-data/iam/security-credentials/`, { headers, signal: AbortSignal.timeout(1000) });
-		if (!roleRes.ok) return null;
-		const role = ((await roleRes.text()).split("\n")[0] ?? "").trim();
+		const roles = await imdsText("/latest/meta-data/iam/security-credentials/", { headers });
+		const role = ((roles ?? "").split("\n")[0] ?? "").trim();
 		if (!role) return null;
 
-		const credRes = await fetch(`${IMDS}/latest/meta-data/iam/security-credentials/${encodeURIComponent(role)}`, { headers, signal: AbortSignal.timeout(1000) });
-		if (!credRes.ok) return null;
-		const c: any = await credRes.json();
+		const text = await imdsText(`/latest/meta-data/iam/security-credentials/${encodeURIComponent(role)}`, { headers });
+		if (!text) return null;
+		const c: any = JSON.parse(text);
 		return { accessKeyId: c.AccessKeyId, secretAccessKey: c.SecretAccessKey, sessionToken: c.Token, expiration: new Date(c.Expiration) };
 	} catch (ex) {
 		return null;
