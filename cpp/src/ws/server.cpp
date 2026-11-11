@@ -11,6 +11,7 @@ namespace {
 
 using Clock = std::chrono::steady_clock;
 const std::size_t kMaxHandshakeBytes = 16 * 1024;
+const int kAcceptRetryMs = 100;
 
 //ハンドシェイク待ちの接続
 struct Pending {
@@ -31,6 +32,7 @@ struct WebSocketServer::Impl : std::enable_shared_from_this<WebSocketServer::Imp
 	std::vector<std::weak_ptr<WebSocket>> sockets;
 	std::uint64_t next_id = 1;
 	std::uint64_t sweep_timer = 0;
+	std::uint64_t accept_timer = 0;
 
 	Impl(WebSocketServer& owner_, EventLoop& loop_, WebSocketServerOptions options_) : owner(owner_), loop(loop_), options(std::move(options_)) {}
 
@@ -44,10 +46,30 @@ struct WebSocketServer::Impl : std::enable_shared_from_this<WebSocketServer::Imp
 		return sockets.size();
 	}
 
+	void watch_listener() {
+		std::shared_ptr<Impl> self = shared_from_this();
+		loop.add(listener, kRead, [self](unsigned) { self->on_accept(); });
+	}
+
+	//accept が待ち以外で失敗した (fd の上限など)。待ち受けたままだと poll がすぐ戻り続けるので、少し外してから戻す
+	void back_off_accept() {
+		loop.remove(listener);
+		std::weak_ptr<Impl> weak = shared_from_this();
+		accept_timer = loop.set_timer(kAcceptRetryMs, [weak] {
+			auto self = weak.lock();
+			if (!self) return;
+			self->accept_timer = 0;
+			if (self->listener != kInvalidSocket) self->watch_listener();
+		});
+	}
+
 	void on_accept() {
 		for (;;) {
 			const socket_t fd = accept_tcp(listener, nullptr);
-			if (fd == kInvalidSocket) return;
+			if (fd == kInvalidSocket) {
+				if (!last_error_would_block()) back_off_accept();
+				return;
+			}
 			if (pending.size() + live_sockets() >= options.max_connections) {
 				close_socket(fd);
 				continue;
@@ -133,6 +155,8 @@ struct WebSocketServer::Impl : std::enable_shared_from_this<WebSocketServer::Imp
 		}
 		if (sweep_timer) loop.cancel_timer(sweep_timer);
 		sweep_timer = 0;
+		if (accept_timer) loop.cancel_timer(accept_timer);
+		accept_timer = 0;
 
 		std::vector<std::shared_ptr<TcpConn>> conns;
 		for (const auto& kv : pending) conns.push_back(kv.second.tcp);
@@ -158,7 +182,7 @@ int WebSocketServer::listen(int port, const std::string& host) {
 	std::shared_ptr<Impl> impl = impl_;
 	impl->loop.dispatch_sync([impl, l] {
 		impl->listener = l.fd;
-		impl->loop.add(l.fd, kRead, [impl](unsigned) { impl->on_accept(); });
+		impl->watch_listener();
 		impl->sweep_timer = impl->loop.set_timer(250, [impl] { impl->sweep(); }, true);
 	});
 	return l.port;

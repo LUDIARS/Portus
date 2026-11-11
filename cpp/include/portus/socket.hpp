@@ -44,7 +44,7 @@ long socket_send(socket_t fd, const char* buf, std::size_t len);
 
 //失敗時は std::runtime_error
 Listener listen_tcp(const std::string& host, int port, int backlog = 128);
-socket_t accept_tcp(socket_t listener, std::string* peer);	//無ければ kInvalidSocket
+socket_t accept_tcp(socket_t listener, std::string* peer);	//無ければ kInvalidSocket (待ちか失敗かは直後の last_error_would_block で判別)
 std::vector<SockAddr> resolve_tcp(const std::string& host, int port);
 socket_t start_connect(const SockAddr& addr, bool* in_progress);	//非ブロッキング接続。失敗は kInvalidSocket
 socket_t connect_tcp(const std::string& host, int port, int timeout_ms);	//接続完了まで待つ。失敗は例外

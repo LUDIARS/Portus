@@ -34,8 +34,13 @@ public:
 	std::vector<RespReply> push(std::string_view chunk);
 
 private:
-	bool parse(std::size_t offset, int depth, RespReply& out, std::size_t& next) const;
+	struct Pending {	//要素を待っている配列
+		Json items;
+		long long remaining;
+	};
+	bool parse_one(std::size_t offset, RespReply& out, long long& count, std::size_t& next) const;
 	std::string buffer_;
+	std::vector<Pending> stack_;
 };
 
 //接続は最初のコマンドで張る。切れたら次のコマンドで張り直す。複数スレッドから呼んでよい (1 本を順に使う)

@@ -123,3 +123,30 @@ TEST(request_head_parse, "HTTP: 要求ヘッダの解析と不正な形の拒否
 	h2.add("Content-Length", "+5");
 	CHECK(!parse_content_length(h2, length));
 }
+
+TEST(body_merge_many_keys, "ボディ: キーが大量の JSON / フォーム (1 MB) も 2 乗時間にならず、パス変数が勝つ") {
+	std::string json = "{\"id\":999";
+	std::string form = "id=999";
+	for (int i = 0; json.size() < 1024 * 1024; ++i) json += ",\"k" + std::to_string(i) + "\":1";
+	json += ",\"__proto__\":1,\"k0\":2}";	//同じキーは後勝ち
+	for (int i = 0; form.size() < 1024 * 1024; ++i) form += "&k" + std::to_string(i) + "=1";
+	form += "&constructor=1&k0=2";
+
+	for (const std::string* body : { &json, &form }) {
+		Json query = Json::object({ { "id", 7 }, { "q", "x" } });
+		const Json params = Json::object({ { "id", 7 } });
+		const auto started = std::chrono::steady_clock::now();
+		merge_body(query, *body, params);
+		const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started).count();
+		CHECK(ms < 1000 * testing::kTimeScale);
+		CHECK(query.members().size() > 90000u);
+		CHECK_EQ(query.at("id").as_number(), 7);
+		CHECK_EQ(query.at("q").as_string(), "x");
+		CHECK(query.at("k0") == (body == &json ? Json(2) : Json("2")));
+		CHECK(!query.find("__proto__") && !query.find("constructor"));
+		CHECK_EQ(query.members()[0].first, "id");	//既にあるキーの位置は変えない
+	}
+	const Json q = parse_query_string("a=1&b=2&a=3");
+	CHECK_EQ(q.members().size(), 2u);
+	CHECK_EQ(q.at("a").as_string(), "3");
+}

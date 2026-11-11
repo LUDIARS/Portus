@@ -11,7 +11,22 @@
 #include "portus/log.hpp"
 #include "portus/socket.hpp"
 
+#if defined(__SANITIZE_ADDRESS__) || defined(__SANITIZE_THREAD__)
+#define PORTUS_TEST_SANITIZED 1
+#elif defined(__has_feature)
+#if __has_feature(address_sanitizer) || __has_feature(thread_sanitizer)
+#define PORTUS_TEST_SANITIZED 1
+#endif
+#endif
+
 namespace testing {
+
+//計算量を時間で確かめるテストの倍率。サニタイザ付きのビルドは数倍遅い (2 乗時間ならそれでも桁違いに超える)
+#ifdef PORTUS_TEST_SANITIZED
+constexpr int kTimeScale = 5;
+#else
+constexpr int kTimeScale = 1;
+#endif
 
 struct Case {
 	const char* name;
@@ -29,6 +44,30 @@ bool wait_until(const std::function<bool()>& cond, int timeout_ms = 3000);
 
 //ループバックの port へ data を送り、相手が閉じるか timeout になるまでに届いたものを返す
 std::string raw_exchange(int port, const std::string& data, int timeout_ms = 3000);
+
+//受信バッファを固定する (OS の自動拡張で、読まない相手の分まで OS に吸い込まれないように)
+void set_receive_buffer(portus::socket_t fd, int bytes);
+
+#ifndef _WIN32
+//プロセスの fd を使い切った状態を作る (accept が EMFILE で失敗する状況)。破棄で fd と上限を元に戻す
+//  上限を下げ、空いた番号を dup で埋める。spare 本だけ空けておき、呼び出し側が接続などに使う
+class FdExhaustion {
+public:
+	explicit FdExhaustion(int spare);
+	~FdExhaustion();
+	bool ok() const { return ok_; }
+	void release();	//期限前に戻す
+
+private:
+	bool ok_ = false;
+	bool restored_ = false;
+	unsigned long long saved_cur_ = 0;
+	std::vector<int> fillers_;
+};
+
+//このプロセスが ms の間に使った CPU 時間 (秒)
+double cpu_seconds_during(int ms);
+#endif
 
 //記録をメモリに溜める出力先
 class MemorySink : public portus::LogSink {

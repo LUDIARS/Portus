@@ -97,7 +97,7 @@ struct Connector : std::enable_shared_from_this<Connector> {
 
 		socket->attach(conn);	//ここで conn のコールバックが WebSocket のものに替わる
 		if (socket->ready_state() != WebSocket::OPEN) return;
-		if (socket->on_open) socket->on_open();
+		if (auto cb = socket->on_open) cb();	//差し替えられても壊れないよう写してから呼ぶ
 		socket->receive(rest);
 	}
 

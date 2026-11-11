@@ -16,6 +16,10 @@ void TcpConn::set_on_close(CloseFn fn) {
 	on_close_ = std::make_shared<CloseFn>(std::move(fn));
 }
 
+void TcpConn::set_on_drain(CloseFn fn) {
+	on_drain_ = std::make_shared<CloseFn>(std::move(fn));
+}
+
 void TcpConn::start() {
 	std::shared_ptr<TcpConn> self = shared_from_this();
 	loop_.add(fd_, kRead, [self](unsigned events) { self->handle_io(events); });
@@ -49,6 +53,7 @@ void TcpConn::flush() {
 		const long n = socket_send(fd_, out_.data() + out_pos_, buffered());
 		if (n > 0) {
 			out_pos_ += static_cast<std::size_t>(n);
+			sent_ += static_cast<std::uint64_t>(n);
 			continue;
 		}
 		if (last_error_would_block()) break;
@@ -90,6 +95,7 @@ void TcpConn::close() {
 	std::shared_ptr<CloseFn> cb = std::move(on_close_);
 	on_close_.reset();
 	on_data_.reset();
+	on_drain_.reset();
 	if (cb && *cb) (*cb)();
 }
 
@@ -98,8 +104,15 @@ void TcpConn::handle_io(unsigned events) {
 	if (closed()) return;
 
 	if (events & kWrite) {
+		const bool had_pending = buffered() > 0;
 		flush();
 		if (closed()) return;
+		//ここ (ループから直接) でだけ知らせる。write の中で呼ぶと持ち主の処理が入れ子になる
+		std::shared_ptr<CloseFn> drained = on_drain_;
+		if (had_pending && buffered() == 0 && drained && *drained) {
+			(*drained)();
+			if (closed()) return;
+		}
 	}
 	if (!(events & (kRead | kError))) return;
 	if (!reading_) {

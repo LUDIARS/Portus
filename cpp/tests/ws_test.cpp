@@ -284,3 +284,80 @@ TEST(ws_slow_consumer, "WebSocket: 読まない相手への送信待ちが上限
 	close_socket(fd);
 	server.close();
 }
+
+TEST(ws_replace_callback, "WebSocket: 実行中のコールバックが自分自身を差し替えても、掴んでいた値は壊れない") {
+	LoopThread lt;
+	WebSocketServer server(lt.loop());
+	server.on_connection = [](const std::shared_ptr<WebSocket>& ws, const RequestHead&) {
+		std::weak_ptr<WebSocket> weak = ws;
+		const std::string user = "session-state-that-is-long-enough-to-live-on-the-heap";
+		//最初のメッセージで認証し、以後は本来のハンドラに替える
+		ws->on_message = [weak, user](std::string_view, bool) {
+			auto s = weak.lock();
+			if (!s) return;
+			s->on_message = [weak](std::string_view data, bool) {
+				if (auto t = weak.lock()) t->send("echo:" + std::string(data));
+			};
+			s->send("welcome " + user);	//差し替えた後も、この関数が掴んだ user を使う
+		};
+	};
+	const int port = server.listen(0);
+
+	std::promise<void> opened;
+	std::promise<std::string> first;
+	std::promise<std::string> second;
+	std::atomic<int> received{0};
+	std::shared_ptr<WebSocket> client;
+	lt.loop().dispatch_sync([&] {
+		client = connect_websocket(lt.loop(), "ws://127.0.0.1:" + std::to_string(port) + "/");
+		client->on_open = [&] {
+			client->on_open = nullptr;	//on_open も実行中に外してよい
+			opened.set_value();
+		};
+		client->on_message = [&](std::string_view data, bool) {
+			if (received++ == 0) first.set_value(std::string(data));
+			else second.set_value(std::string(data));
+		};
+	});
+	auto opened_f = opened.get_future();
+	CHECK(ready(opened_f));
+	client->send("login");
+	auto first_f = first.get_future();
+	CHECK(ready(first_f));
+	CHECK_EQ(first_f.get(), "welcome session-state-that-is-long-enough-to-live-on-the-heap");
+	client->send("hi");
+	auto second_f = second.get_future();
+	CHECK(ready(second_f));
+	CHECK_EQ(second_f.get(), "echo:hi");
+	client->terminate();
+	server.close();
+}
+
+#ifndef _WIN32
+TEST(ws_accept_backoff, "WebSocket: fd を使い切って accept が失敗しても空回りせず、空いたら受け付けを再開する") {
+	EchoServer s;
+	socket_t fd = kInvalidSocket;
+	double cpu = 0;
+	{
+		testing::FdExhaustion full(1);
+		CHECK(full.ok());
+		fd = connect_tcp("127.0.0.1", s.port, 2000);
+		cpu = testing::cpu_seconds_during(300);
+	}
+	CHECK(cpu < 0.1);
+
+	const std::string req = "GET / HTTP/1.1\r\nHost: x\r\n\r\n";
+	socket_send(fd, req.data(), req.size());
+	std::string raw;
+	char buf[4096];
+	const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+	while (raw.find("\r\n\r\n") == std::string::npos && std::chrono::steady_clock::now() < deadline) {
+		const long n = socket_recv(fd, buf, sizeof(buf));
+		if (n > 0) raw.append(buf, static_cast<std::size_t>(n));
+		else if (n == 0 || !last_error_would_block()) break;
+		else wait_socket(fd, kRead, 20);
+	}
+	close_socket(fd);
+	CHECK_EQ(raw.substr(0, 12), "HTTP/1.1 426");
+}
+#endif

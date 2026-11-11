@@ -10,7 +10,7 @@ namespace portus {
 class ThreadPool {
 public:
 	explicit ThreadPool(std::size_t threads, std::size_t max_queue = 1024);
-	~ThreadPool();	//受け付け済みの仕事を終えてから合流する
+	~ThreadPool();	//受け付け済みの仕事を終えてから合流する。自分のワーカーの中から破棄してもよい (そのワーカーは待たずに切り離す)
 	ThreadPool(const ThreadPool&) = delete;
 	ThreadPool& operator=(const ThreadPool&) = delete;
 
@@ -18,7 +18,7 @@ public:
 
 private:
 	struct Impl;
-	std::unique_ptr<Impl> impl_;
+	std::shared_ptr<Impl> impl_;
 };
 
 }

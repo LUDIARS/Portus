@@ -129,6 +129,7 @@ struct HttpServerOptions {
 	std::size_t max_pending = 1024;				//ワーカー待ちの上限。溢れたら 503
 	int request_timeout_ms = 30000;				//要求を受け切るまでの上限 (遅延送信で接続を占有されない)
 	int keep_alive_timeout_ms = 5000;			//応答後、次の要求を待つ時間
+	int write_timeout_ms = 30000;				//応答の送信がまったく進まないまま待つ上限 (読まない相手に接続を占有されない)
 
 	//空でなければ Host ヘッダ (ポートを除く) がこの中に無い要求を 421 で拒否する
 	//ローカルサービスを直接ブラウザから叩ける場所で動かすときの DNS リバインディング対策

@@ -34,7 +34,9 @@ struct ThreadPool::Impl {
 ThreadPool::ThreadPool(std::size_t threads, std::size_t max_queue) : impl_(new Impl()) {
 	impl_->max_queue = max_queue;
 	if (threads == 0) threads = 1;
-	for (std::size_t i = 0; i < threads; ++i) impl_->threads.emplace_back([this] { impl_->work(); });
+	//ワーカーは Impl を共有で持つ。自分のワーカーの中で破棄されても、そのワーカーは仕事を終えるまで Impl を使える
+	std::shared_ptr<Impl> impl = impl_;
+	for (std::size_t i = 0; i < threads; ++i) impl_->threads.emplace_back([impl] { impl->work(); });
 }
 
 ThreadPool::~ThreadPool() {
@@ -43,7 +45,11 @@ ThreadPool::~ThreadPool() {
 		impl_->closing = true;
 	}
 	impl_->cv.notify_all();
-	for (std::thread& t : impl_->threads) t.join();
+	//自分のワーカーから破棄されたとき (ハンドラが close したなど)、自分は待てないので切り離す
+	for (std::thread& t : impl_->threads) {
+		if (t.get_id() == std::this_thread::get_id()) t.detach();
+		else t.join();
+	}
 }
 
 bool ThreadPool::submit(std::function<void()> task) {

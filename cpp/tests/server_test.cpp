@@ -283,3 +283,164 @@ TEST(server_inline, "サーバ: ワーカー無し (ループスレッドで直�
 	CHECK_EQ(count, 3000u);
 	CHECK(raw.find("{\"i\":2999}") != std::string::npos);
 }
+
+namespace {
+
+void send_all(socket_t fd, const std::string& data) {
+	std::size_t sent = 0;
+	while (sent < data.size()) {
+		const long n = socket_send(fd, data.data() + sent, data.size() - sent);
+		if (n > 0) sent += static_cast<std::size_t>(n);
+		else if (!last_error_would_block()) return;
+		else wait_socket(fd, kWrite, 100);
+	}
+}
+
+//読めた量を返す。eof には相手が閉じたか (時間切れでなく) を入れる。pause_ms ごとに休んで遅い読み手を真似る
+std::string read_until(socket_t fd, std::size_t limit, int timeout_ms, bool* eof = nullptr, int pause_ms = 0) {
+	const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+	std::string out;
+	std::vector<char> buf(65536);
+	if (eof) *eof = false;
+	while (out.size() < limit && std::chrono::steady_clock::now() < deadline) {
+		const long n = socket_recv(fd, buf.data(), buf.size());
+		if (n > 0) {
+			out.append(buf.data(), static_cast<std::size_t>(n));
+			if (pause_ms) std::this_thread::sleep_for(std::chrono::milliseconds(pause_ms));
+			continue;
+		}
+		if (n == 0 || !last_error_would_block()) {
+			if (eof) *eof = true;
+			break;
+		}
+		wait_socket(fd, kRead, 20);
+	}
+	return out;
+}
+
+std::size_t count_of(const std::string& text, const std::string& needle) {
+	std::size_t count = 0;
+	for (std::size_t pos = text.find(needle); pos != std::string::npos; pos = text.find(needle, pos + 1)) ++count;
+	return count;
+}
+
+}
+
+TEST(server_pipeline_backpressure, "サーバ: 応答を読まずに要求だけ送り続ける相手には、送り切るまで次の要求を処理しない") {
+	const std::string big(512 * 1024, 'x');
+	std::atomic<int> calls{0};
+	HttpServerOptions options;
+	options.routes = { { "GET", "/big", [&](RequestContext&) -> Reply {
+		++calls;
+		return big;
+	} } };
+	Fixture f(std::move(options));
+
+	const int total = 40;
+	std::string batch;
+	for (int i = 0; i < total; ++i) batch += "GET /big HTTP/1.1\r\nHost: x\r\n\r\n";
+	const socket_t fd = connect_tcp("127.0.0.1", f.port, 2000);
+	testing::set_receive_buffer(fd, 64 * 1024);
+	send_all(fd, batch);
+	std::this_thread::sleep_for(std::chrono::milliseconds(200));
+	//OS の送受信バッファに入る分 (数 MB) だけ先に進む。全件の応答を溜め込まない
+	CHECK(calls.load() < 20);
+
+	//読み始めれば残りも順に届く
+	const std::size_t expected = static_cast<std::size_t>(total) * big.size();
+	const std::string raw = read_until(fd, expected + static_cast<std::size_t>(total) * 200, 5000);
+	close_socket(fd);
+	CHECK_EQ(calls.load(), total);
+	CHECK_EQ(count_of(raw, "HTTP/1.1 200"), static_cast<std::size_t>(total));
+}
+
+TEST(server_slow_reader, "サーバ: 遅くても受け取っている相手には keep-alive の期限で応答を切らず、送り切ってから次の要求を待つ") {
+	const std::string big(8 * 1024 * 1024, 'x');
+	HttpServerOptions options;
+	options.keep_alive_timeout_ms = 300;
+	options.routes = {
+		{ "GET", "/big", [&](RequestContext&) -> Reply { return big; } },
+		{ "GET", "/small", [](RequestContext&) -> Reply { return "small"; } },
+	};
+	Fixture f(std::move(options));
+
+	const socket_t fd = connect_tcp("127.0.0.1", f.port, 2000);
+	testing::set_receive_buffer(fd, 64 * 1024);
+	send_all(fd, "GET /big HTTP/1.1\r\nHost: x\r\n\r\n");
+	//keep-alive の期限より長くかけて先頭を読む (この間サーバはまだ送り切っていない)
+	const auto started = std::chrono::steady_clock::now();
+	bool eof = false;
+	const std::string slow = read_until(fd, 2 * 1024 * 1024, 5000, &eof, 10);
+	const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started).count();
+	CHECK(!eof);
+	CHECK(ms > 300);
+	const std::string fast = read_until(fd, big.size() - slow.size(), 5000, &eof);
+	CHECK(!eof);
+	CHECK(slow.size() + fast.size() >= big.size());
+
+	//送り切った後で keep-alive の待ちが始まるので、同じ接続で次の要求が通る
+	send_all(fd, "GET /small HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n");
+	const std::string rest = read_until(fd, 1 << 20, 2000, &eof);
+	close_socket(fd);
+	CHECK(rest.find("small") != std::string::npos);
+	CHECK(eof);
+}
+
+TEST(server_write_stall, "サーバ: 応答をまったく受け取らない相手は write_timeout_ms で切る") {
+	const std::string huge(8 * 1024 * 1024, 'x');
+	HttpServerOptions options;
+	options.write_timeout_ms = 150;
+	options.routes = { { "GET", "/huge", [&](RequestContext&) -> Reply { return huge; } } };
+	Fixture f(std::move(options));
+
+	const socket_t fd = connect_tcp("127.0.0.1", f.port, 2000);
+	testing::set_receive_buffer(fd, 64 * 1024);
+	send_all(fd, "GET /huge HTTP/1.1\r\nHost: x\r\n\r\n");
+	std::this_thread::sleep_for(std::chrono::milliseconds(500));
+	bool eof = false;
+	const std::string raw = read_until(fd, huge.size() * 2, 2000, &eof);
+	close_socket(fd);
+	CHECK(eof);
+	CHECK(raw.size() < huge.size());	//OS のバッファにあった分だけ届いて切れる
+}
+
+TEST(server_close_in_handler, "サーバ: ハンドラの中から close してもプロセスは落ちず、待ち受けをやめる") {
+	std::atomic<HttpServer*> server{nullptr};
+	std::atomic<bool> closed{false};
+	HttpServerOptions options;
+	options.worker_threads = 2;
+	options.routes = { { "GET", "/quit", [&](RequestContext&) -> Reply {
+		server.load()->close();
+		closed = true;
+		return "bye";
+	} } };
+	Fixture f(std::move(options));
+	server = f.server.get();
+
+	testing::raw_exchange(f.port, "GET /quit HTTP/1.1\r\nHost: x\r\n\r\n", 2000);
+	CHECK(testing::wait_until([&] { return closed.load(); }));
+	CHECK_THROWS(connect_tcp("127.0.0.1", f.port, 500));
+}
+
+#ifndef _WIN32
+TEST(server_accept_backoff, "サーバ: fd を使い切って accept が失敗しても空回りせず、空いたら受け付けを再開する") {
+	HttpServerOptions options;
+	options.routes = { { "GET", "/ok", [](RequestContext&) -> Reply { return "ok"; } } };
+	Fixture f(std::move(options));
+
+	socket_t fd = kInvalidSocket;
+	double cpu = 0;
+	{
+		testing::FdExhaustion full(1);
+		CHECK(full.ok());
+		fd = connect_tcp("127.0.0.1", f.port, 2000);	//最後の 1 本を使う。サーバ側の accept は EMFILE になる
+		cpu = testing::cpu_seconds_during(300);
+	}
+	CHECK(cpu < 0.1);
+
+	send_all(fd, "GET /ok HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n");
+	const std::string raw = read_until(fd, 1 << 20, 3000);
+	close_socket(fd);
+	CHECK_EQ(raw.substr(0, 12), "HTTP/1.1 200");
+}
+#endif

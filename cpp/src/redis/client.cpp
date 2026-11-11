@@ -45,6 +45,8 @@ struct RedisClient::Impl {
 	RespReply read_reply(std::chrono::steady_clock::time_point deadline) {
 		char buf[16384];
 		while (ready.empty()) {
+			//届き続ける限り recv は待たないので、期限は毎回見る (少しずつ届く大きな応答で時間切れが効かなくなる)
+			if (std::chrono::steady_clock::now() >= deadline) throw std::runtime_error("redis timeout");
 			const long n = socket_recv(fd, buf, sizeof(buf));
 			if (n > 0) {
 				ready = parser.push(std::string_view(buf, static_cast<std::size_t>(n)));

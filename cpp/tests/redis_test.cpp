@@ -115,3 +115,39 @@ TEST(redis_unreachable, "Redis: 繋がらないときは例外で返る") {
 	RedisClient redis("127.0.0.1", l.port, 500);
 	CHECK_THROWS(redis.get("k"));
 }
+
+TEST(resp_large_array_chunks, "Redis: 大きな配列が少しずつ届いても、届くたびに先頭から読み直さない") {
+	const int n = 200000;
+	std::string raw = "*" + std::to_string(n) + "\r\n";
+	for (int i = 0; i < n; ++i) raw += "$1\r\nx\r\n";
+	raw += ":5\r\n";
+
+	RespParser parser;
+	std::vector<RespReply> replies;
+	const auto started = std::chrono::steady_clock::now();
+	for (std::size_t pos = 0; pos < raw.size(); pos += 16384) {
+		for (RespReply& r : parser.push(std::string_view(raw).substr(pos, 16384))) replies.push_back(std::move(r));
+	}
+	const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started).count();
+	CHECK(ms < 1000 * testing::kTimeScale);	//読み直すと 2 乗時間で十数秒かかる
+	CHECK_EQ(replies.size(), 2u);
+	CHECK_EQ(replies[0].value.items().size(), static_cast<std::size_t>(n));
+	CHECK_EQ(replies[1].value.as_number(), 5);
+
+	//入れ子の配列も分割の位置に関係なく組み立てられる
+	const std::string nested = "*2\r\n*2\r\n:1\r\n$2\r\nab\r\n*0\r\n-ERR x\r\n";
+	RespParser byte_wise;
+	std::vector<RespReply> got;
+	for (char c : nested) {
+		for (RespReply& r : byte_wise.push(std::string_view(&c, 1))) got.push_back(std::move(r));
+	}
+	CHECK_EQ(got.size(), 2u);
+	CHECK_EQ(got[0].value.dump(), "[[1,\"ab\"],[]]");
+	CHECK(got[1].is_error);
+}
+
+TEST(resp_integer_overflow, "Redis: 桁あふれする整数は拒否する") {
+	CHECK_THROWS(RespParser().push(":9999999999999999999\r\n"));
+	CHECK_THROWS(RespParser().push(":-9999999999999999999\r\n"));
+	CHECK_EQ(RespParser().push(":-999999999999999999\r\n")[0].value.as_number(), -999999999999999999.0);
+}

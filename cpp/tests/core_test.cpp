@@ -169,3 +169,59 @@ TEST(thread_pool_limit, "スレッドプール: 待ち行列の上限を超え�
 	}	//破棄時に受け付けた分は終わっている
 	CHECK_EQ(done.load(), accepted);
 }
+
+TEST(event_loop_cancel_in_batch, "イベントループ: 同じ回に期限が来たタイマーでも、先のタスクが取り消したものは呼ばない") {
+	LoopThread lt;
+	std::atomic<int> fired{0};
+	std::atomic<bool> first_ran{false};
+	lt.loop().dispatch_sync([&] {
+		std::uint64_t* second = new std::uint64_t(0);
+		lt.loop().set_timer(1, [&, second] {
+			first_ran = true;
+			lt.loop().cancel_timer(*second);
+			delete second;
+		});
+		*second = lt.loop().set_timer(2, [&] { ++fired; }, true);
+		//両方の期限が過ぎてから timers を回させる (同じ回に集まる)
+		std::this_thread::sleep_for(std::chrono::milliseconds(20));
+	});
+	CHECK(testing::wait_until([&] { return first_ran.load(); }));
+	std::this_thread::sleep_for(std::chrono::milliseconds(30));
+	CHECK_EQ(fired.load(), 0);	//呼ばれず、繰り返しとして積み直されもしない
+}
+
+TEST(event_loop_dispatch_during_stop, "イベントループ: 止まる途中に dispatch_sync しても取り残されず戻る") {
+	for (int round = 0; round < 200; ++round) {
+		EventLoop loop;
+		std::atomic<bool> started{false};
+		std::thread runner([&] {
+			loop.post([&] { started = true; });
+			loop.run();
+		});
+		while (!started) std::this_thread::yield();
+		std::atomic<int> done{0};
+		std::thread caller([&] {
+			for (int i = 0; i < 50; ++i) loop.dispatch_sync([&] { ++done; });
+		});
+		loop.stop();
+		runner.join();
+		caller.join();	//止まった後の分はその場で実行される
+		CHECK_EQ(done.load(), 50);
+	}
+}
+
+TEST(thread_pool_self_destroy, "スレッドプール: 自分のワーカーの中から破棄しても落ちない") {
+	auto pool = std::make_unique<ThreadPool>(2);
+	std::atomic<bool> destroyed{false};
+	std::atomic<int> others{0};
+	for (int i = 0; i < 4; ++i) pool->submit([&] { ++others; });
+	CHECK(testing::wait_until([&] { return others.load() == 4; }));
+	std::atomic<bool> submitted{false};
+	pool->submit([&] {
+		while (!submitted) std::this_thread::yield();	//submit から戻ってから壊す (呼び出し中の破棄は呼び出し側の誤り)
+		pool.reset();	//他のワーカーとは合流し、自分は切り離される
+		destroyed = true;
+	});
+	submitted = true;
+	CHECK(testing::wait_until([&] { return destroyed.load(); }));
+}

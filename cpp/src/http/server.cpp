@@ -1,5 +1,6 @@
 #include "portus/http.hpp"
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <mutex>
@@ -19,8 +20,10 @@ using Clock = std::chrono::steady_clock;
 
 const std::size_t kNoBufferLimit = static_cast<std::size_t>(-1);	//応答は 1 接続 1 つずつで、大きさはハンドラが決める
 const int kLingerMs = 2000;
+const int kAcceptRetryMs = 100;
 
-enum class State { Head, Body, Handling, Closing };
+//Writing: 応答を送り切るまで読み止めて待つ (読まずに要求だけ送り続ける相手に応答を溜め込まない)
+enum class State { Head, Body, Handling, Writing, Closing };
 
 struct Conn {
 	std::uint64_t id = 0;
@@ -35,6 +38,8 @@ struct Conn {
 	bool receiving = false;	//要求の最初のバイトが届いたか
 	Clock::time_point deadline;
 	Clock::time_point started;
+	std::uint64_t sent_mark = 0;		//送信待ちがある間、最後に送信が進んだ時点の送信量と時刻
+	Clock::time_point sent_at;
 };
 
 bool has_body_method(const std::string& method) {
@@ -86,6 +91,7 @@ struct HttpServer::Impl : std::enable_shared_from_this<HttpServer::Impl> {
 	std::unordered_map<std::uint64_t, std::shared_ptr<Conn>> conns;
 	std::uint64_t next_id = 1;
 	std::uint64_t sweep_timer = 0;
+	std::uint64_t accept_timer = 0;
 	std::atomic<bool> closed{false};
 
 	Impl(EventLoop& loop_, HttpServerOptions options_) : loop(loop_), options(std::move(options_)), log(options.log) {
@@ -101,11 +107,31 @@ struct HttpServer::Impl : std::enable_shared_from_this<HttpServer::Impl> {
 
 	//--- 接続の受け入れ ---
 
+	void watch_listener() {
+		std::shared_ptr<Impl> self = shared_from_this();
+		loop.add(listener, kRead, [self](unsigned) { self->on_accept(); });
+	}
+
+	//accept が待ち以外で失敗した (fd の上限など)。待ち受けたままだと poll がすぐ戻り続けるので、少し外してから戻す
+	void back_off_accept() {
+		loop.remove(listener);
+		std::weak_ptr<Impl> weak = shared_from_this();
+		accept_timer = loop.set_timer(kAcceptRetryMs, [weak] {
+			auto self = weak.lock();
+			if (!self) return;
+			self->accept_timer = 0;
+			if (self->listener != kInvalidSocket) self->watch_listener();
+		});
+	}
+
 	void on_accept() {
 		for (;;) {
 			std::string peer;
 			const socket_t fd = accept_tcp(listener, &peer);
-			if (fd == kInvalidSocket) return;
+			if (fd == kInvalidSocket) {
+				if (!last_error_would_block()) back_off_accept();
+				return;
+			}
 			if (conns.size() >= options.max_connections) {
 				close_socket(fd);
 				continue;
@@ -125,6 +151,9 @@ struct HttpServer::Impl : std::enable_shared_from_this<HttpServer::Impl> {
 			conn->tcp->set_on_close([weak, id] {
 				if (auto self = weak.lock()) self->conns.erase(id);
 			});
+			conn->tcp->set_on_drain([weak, id] {
+				if (auto self = weak.lock()) self->on_drain(id);
+			});
 			conns[id] = conn;
 			conn->tcp->start();
 		}
@@ -139,7 +168,7 @@ struct HttpServer::Impl : std::enable_shared_from_this<HttpServer::Impl> {
 
 	void on_data(std::uint64_t id, const char* data, std::size_t len) {
 		std::shared_ptr<Conn> conn = find(id);
-		if (!conn || conn->state == State::Handling || conn->state == State::Closing) return;
+		if (!conn || conn->state == State::Handling || conn->state == State::Writing || conn->state == State::Closing) return;
 
 		if (!conn->receiving) {
 			conn->receiving = true;
@@ -271,20 +300,24 @@ struct HttpServer::Impl : std::enable_shared_from_this<HttpServer::Impl> {
 		ctx->route = match->def;
 		ctx->params = std::move(match->params);
 		ctx->query = std::move(match->query);
-		if (has_body_method(ctx->method)) {
-			merge_body(ctx->query, body, ctx->params);
-			ctx->body = std::move(body);
-		}
+		if (has_body_method(ctx->method)) ctx->body = std::move(body);
 		ctx->log = log.child("req", Json::object({ { "reqId", Json(ctx->req_id) } }));
 
 		const std::string handler = match->def->handler_name();
 		//ワーカー無し: ループスレッドでそのまま実行する (ハンドラがブロックしない前提の構成)
-		if (!pool) return respond(conn, run_guarded(*ctx, handler), handler);
+		if (!pool) {
+			merge_request_body(*ctx);
+			return respond(conn, run_guarded(*ctx, handler), handler);
+		}
 
 		std::shared_ptr<Impl> self = shared_from_this();
 		const std::uint64_t id = conn->id;
 		const bool queued = pool->submit([self, ctx, id, handler] {
+			//ボディの解析は大きいと重いので、ループではなくワーカーで行う
+			self->merge_request_body(*ctx);
 			auto reply = std::make_shared<Reply>(self->run_guarded(*ctx, handler));
+			//ハンドラの中で close されていたら、ループはもう使えないかもしれない (応答を受ける接続も残っていない)
+			if (self->closed.load()) return;
 			self->loop.post([self, id, reply, handler] {
 				std::shared_ptr<Conn> c = self->find(id);
 				if (c && self->respond(c, std::move(*reply), handler)) self->process(c);
@@ -292,6 +325,10 @@ struct HttpServer::Impl : std::enable_shared_from_this<HttpServer::Impl> {
 		});
 		if (!queued) return respond(conn, text("server busy.", 503), handler);
 		return false;
+	}
+
+	static void merge_request_body(RequestContext& ctx) {
+		if (!ctx.body.empty()) merge_body(ctx.query, ctx.body, ctx.params);
 	}
 
 	void log_failure(const RequestContext& ctx, const std::string& handler, const std::string& what) const {
@@ -322,11 +359,39 @@ struct HttpServer::Impl : std::enable_shared_from_this<HttpServer::Impl> {
 			linger(conn);
 			return false;
 		}
+		if (conn->tcp->buffered() > 0) {
+			//送り切るまで次の要求は読まない。続きは on_drain から
+			conn->state = State::Writing;
+			mark_sent(*conn);
+			return false;
+		}
+		wait_next(conn);
+		return true;
+	}
+
+	//応答を送り切った。keep-alive の待ち時間はここから数える
+	void wait_next(const std::shared_ptr<Conn>& conn) {
 		conn->state = State::Head;
 		conn->receiving = false;
 		conn->deadline = Clock::now() + std::chrono::milliseconds(options.keep_alive_timeout_ms);
 		conn->tcp->pause_read(false);
-		return true;
+	}
+
+	void on_drain(std::uint64_t id) {
+		std::shared_ptr<Conn> conn = find(id);
+		if (!conn) return;
+		if (conn->state == State::Closing) {
+			conn->deadline = Clock::now() + std::chrono::milliseconds(kLingerMs);
+			return;
+		}
+		if (conn->state != State::Writing) return;
+		wait_next(conn);
+		process(conn);	//送り切るのを待つ間に届いていた (先読み済みの) 要求を進める
+	}
+
+	static void mark_sent(Conn& conn) {
+		conn.sent_mark = conn.tcp->sent_bytes();
+		conn.sent_at = Clock::now();
 	}
 
 	//要求を最後まで読まずに返す応答 (400 / 411 / 413 / 421 / 431)。接続は続けない
@@ -342,7 +407,8 @@ struct HttpServer::Impl : std::enable_shared_from_this<HttpServer::Impl> {
 	void linger(const std::shared_ptr<Conn>& conn) {
 		conn->state = State::Closing;
 		conn->in.clear();
-		conn->deadline = Clock::now() + std::chrono::milliseconds(kLingerMs);
+		conn->deadline = Clock::now() + std::chrono::milliseconds(kLingerMs);	//送り切ったら on_drain で数え直す
+		mark_sent(*conn);
 		conn->tcp->end();
 	}
 
@@ -356,11 +422,20 @@ struct HttpServer::Impl : std::enable_shared_from_this<HttpServer::Impl> {
 	}
 
 	//期限を過ぎた接続を閉じる (ハンドラ実行中は対象外)
+	//  応答の送信待ちがある間は期限で切らない。遅くても受け取っている相手には最後まで送り、write_timeout_ms の間まったく進まなければ切る
 	void sweep() {
 		const auto now = Clock::now();
+		const auto stall = std::chrono::milliseconds(options.write_timeout_ms);
 		std::vector<std::shared_ptr<Conn>> expired;
 		for (const auto& kv : conns) {
-			if (kv.second->state != State::Handling && kv.second->deadline <= now) expired.push_back(kv.second);
+			Conn& c = *kv.second;
+			if (c.state == State::Handling) continue;
+			if (c.state == State::Writing || c.tcp->buffered() > 0) {
+				if (c.tcp->sent_bytes() != c.sent_mark) mark_sent(c);
+				else if (now - c.sent_at >= stall) expired.push_back(kv.second);
+				continue;
+			}
+			if (c.deadline <= now) expired.push_back(kv.second);
 		}
 		for (const auto& conn : expired) conn->tcp->close();
 	}
@@ -373,6 +448,8 @@ struct HttpServer::Impl : std::enable_shared_from_this<HttpServer::Impl> {
 		}
 		if (sweep_timer) loop.cancel_timer(sweep_timer);
 		sweep_timer = 0;
+		if (accept_timer) loop.cancel_timer(accept_timer);
+		accept_timer = 0;
 
 		std::vector<std::shared_ptr<Conn>> all;
 		for (const auto& kv : conns) all.push_back(kv.second);
@@ -392,8 +469,9 @@ int HttpServer::listen(int port, const std::string& host) {
 	std::shared_ptr<Impl> impl = impl_;
 	impl->loop.dispatch_sync([impl, l] {
 		impl->listener = l.fd;
-		impl->loop.add(l.fd, kRead, [impl](unsigned) { impl->on_accept(); });
-		const int shortest = impl->options.request_timeout_ms < impl->options.keep_alive_timeout_ms ? impl->options.request_timeout_ms : impl->options.keep_alive_timeout_ms;
+		impl->watch_listener();
+		const HttpServerOptions& o = impl->options;
+		const int shortest = std::min({ o.request_timeout_ms, o.keep_alive_timeout_ms, o.write_timeout_ms });
 		const int interval = shortest / 4 < 20 ? 20 : (shortest / 4 > 500 ? 500 : shortest / 4);
 		impl->sweep_timer = impl->loop.set_timer(interval, [impl] { impl->sweep(); }, true);
 	});

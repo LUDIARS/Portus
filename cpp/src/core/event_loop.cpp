@@ -25,10 +25,12 @@ struct EventLoop::Impl {
 		std::uint64_t id;
 		int repeat_ms;
 		Task task;
+		bool cancelled = false;
 	};
 
 	std::unordered_map<socket_t, Entry> entries;
 	std::multimap<Clock::time_point, Timer> timers;
+	std::vector<Timer> due;	//今まさに実行中の期限切れタイマー。同じ回の前のタスクが取り消したものは呼ばない
 	std::uint64_t next_id = 1;
 
 	std::mutex mu;
@@ -36,7 +38,7 @@ struct EventLoop::Impl {
 	socket_t wake[2] = { kInvalidSocket, kInvalidSocket };
 
 	std::atomic<bool> stopping{false};
-	std::atomic<bool> running{false};
+	std::atomic<bool> running{false};	//書き換えは mu の中で。post するか自分で実行するかの判断と食い違わせない
 	std::atomic<std::thread::id> thread{};
 
 	void run_posted() {
@@ -48,6 +50,19 @@ struct EventLoop::Impl {
 		for (Task& t : tasks) t();
 	}
 
+	//ループが回っていれば積んで true。止まっていれば false (呼び出し側がその場で実行する)
+	bool post_if_running(Task& task) {
+		bool wake = false;
+		{
+			std::lock_guard<std::mutex> lock(mu);
+			if (!running.load()) return false;
+			wake = posted.empty();
+			posted.push_back(std::move(task));
+		}
+		if (wake) socket_send(this->wake[1], "w", 1);
+		return true;
+	}
+
 	int poll_timeout() {
 		if (timers.empty()) return 1000;
 		const auto left = std::chrono::duration_cast<std::chrono::milliseconds>(timers.begin()->first - Clock::now()).count();
@@ -57,15 +72,18 @@ struct EventLoop::Impl {
 
 	void run_timers() {
 		const auto now = Clock::now();
-		std::vector<Timer> due;
+		due.clear();
 		while (!timers.empty() && timers.begin()->first <= now) {
 			due.push_back(std::move(timers.begin()->second));
 			timers.erase(timers.begin());
 		}
-		for (Timer& t : due) {
-			if (t.repeat_ms > 0) timers.emplace(now + std::chrono::milliseconds(t.repeat_ms), t);
-			t.task();
+		//タスクの中で set_timer されても due は伸びない (timers に入る) ので添字で回してよい
+		for (std::size_t i = 0; i < due.size(); ++i) {
+			if (due[i].cancelled) continue;
+			if (due[i].repeat_ms > 0) timers.emplace(now + std::chrono::milliseconds(due[i].repeat_ms), due[i]);
+			due[i].task();
 		}
+		due.clear();
 	}
 };
 
@@ -98,6 +116,9 @@ std::uint64_t EventLoop::set_timer(int delay_ms, Task task, bool repeat) {
 }
 
 void EventLoop::cancel_timer(std::uint64_t id) {
+	for (Impl::Timer& t : impl_->due) {
+		if (t.id == id) t.cancelled = true;
+	}
 	for (auto it = impl_->timers.begin(); it != impl_->timers.end(); ++it) {
 		if (it->second.id == id) {
 			impl_->timers.erase(it);
@@ -121,20 +142,24 @@ bool EventLoop::in_loop_thread() const {
 }
 
 void EventLoop::dispatch(Task task) {
-	if (in_loop_thread() || !impl_->running.load()) task();
-	else post(std::move(task));
+	if (in_loop_thread() || !impl_->post_if_running(task)) task();
 }
 
 void EventLoop::dispatch_sync(Task task) {
-	if (in_loop_thread() || !impl_->running.load()) {
+	if (in_loop_thread()) {
 		task();
 		return;
 	}
 	std::promise<void> done;
-	post([&] {
+	Task wrapped = [&] {
 		task();
 		done.set_value();
-	});
+	};
+	//止まる直前に積んで取り残されると永久に待つ。積めなかったらここで実行する
+	if (!impl_->post_if_running(wrapped)) {
+		task();
+		return;
+	}
 	done.get_future().wait();
 }
 
@@ -146,7 +171,10 @@ void EventLoop::stop() {
 void EventLoop::run() {
 	Impl& s = *impl_;
 	s.thread.store(std::this_thread::get_id());
-	s.running.store(true);
+	{
+		std::lock_guard<std::mutex> lock(s.mu);
+		s.running.store(true);
+	}
 
 	struct Slot {
 		socket_t fd;
@@ -201,8 +229,12 @@ void EventLoop::run() {
 		s.run_timers();
 	}
 
+	//running を倒してから最後に流す。倒した後の dispatch は呼び出し側で実行されるので、積まれたまま残るものは無い
+	{
+		std::lock_guard<std::mutex> lock(s.mu);
+		s.running.store(false);
+	}
 	s.run_posted();
-	s.running.store(false);
 	s.stopping.store(false);
 }
 

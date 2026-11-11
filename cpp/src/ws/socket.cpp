@@ -52,8 +52,9 @@ struct WebSocket::Impl {
 		if (conn) conn->write(encode_frame(opcode, payload, is_client));
 	}
 
+	//コールバックは手元に写してから呼ぶ。呼ばれた側が ws->on_xxx を差し替えると、実行中の関数 (と掴んだ値) が壊れるため
 	void emit_error(const std::string& message_text) {
-		if (owner.on_error) owner.on_error(message_text);
+		if (auto cb = owner.on_error) cb(message_text);
 	}
 
 	//相手が閉じるのを待つ。応答が無くても時間で切る
@@ -101,18 +102,18 @@ struct WebSocket::Impl {
 		message_opcode = -1;
 
 		if (!is_binary && !utf8_valid(data)) throw ProtocolError("invalid utf-8", 1007);
-		if (owner.on_message) owner.on_message(data, is_binary);
+		if (auto cb = owner.on_message) cb(data, is_binary);
 	}
 
 	void on_control(const Frame& frame) {
 		switch (frame.opcode) {
 		case Opcode::Ping:
 			if (state.load() == WebSocket::OPEN) write(Opcode::Pong, frame.payload);
-			if (owner.on_ping) owner.on_ping(frame.payload);
+			if (auto cb = owner.on_ping) cb(frame.payload);
 			break;
 
 		case Opcode::Pong:
-			if (owner.on_pong) owner.on_pong(frame.payload);
+			if (auto cb = owner.on_pong) cb(frame.payload);
 			break;
 
 		case Opcode::Close: {
@@ -156,7 +157,7 @@ struct WebSocket::Impl {
 		close_timer = 0;
 		conn.reset();
 		message.clear();
-		if (owner.on_close) owner.on_close(code, reason);
+		if (auto cb = owner.on_close) cb(code, reason);
 
 		//コールバックが ws 自身を掴んでいても解放されるよう、後で外す (実行中のコールバックを壊さないため今は外さない)
 		std::shared_ptr<WebSocket> self = owner.shared_from_this();
