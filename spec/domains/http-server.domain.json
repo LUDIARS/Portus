@@ -12,6 +12,18 @@
     },
     {
       "pathPattern": "(^|/)test/server\\.test\\.ts$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/include/portus/http\\.hpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/include/portus/http_message\\.hpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/tests/http_test\\.cpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/tests/server_test\\.cpp$"
     }
   ]
 }

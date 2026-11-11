@@ -11,6 +11,12 @@
 
 どの依存をなぜ置き換えたかは [docs/dependency-audit.md](docs/dependency-audit.md)、設計の決め事は [DESIGN.md](DESIGN.md)。
 
+## C++ 版
+
+同じ決め事を Node 無しで動く C++17 のライブラリにしたものが [`cpp/`](cpp/README.md) にある。
+常駐するローカルサービスのメモリを減らし (待機時 約 6MB、Node 版は約 62MB)、`npm install` による実行時依存の取り込みを無くすためのもの。
+TypeScript 版を点検して見つけた点は [docs/cpp-review.md](docs/cpp-review.md)。以下は TypeScript 版の説明。
+
 ## モジュール
 
 | import | 中身 | 置き換え対象 |

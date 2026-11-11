@@ -15,6 +15,27 @@
     },
     {
       "pathPattern": "(^|/)src/net/(?:.*/)?[^/]+$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/include/portus/redis\\.hpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/include/portus/net\\.hpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/include/portus/aws\\.hpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/include/portus/ai\\.hpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/tests/redis_test\\.cpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/tests/net_test\\.cpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/tests/aws_test\\.cpp$"
     }
   ]
 }

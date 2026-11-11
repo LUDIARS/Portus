@@ -9,6 +9,12 @@
     },
     {
       "pathPattern": "(^|/)test/ws\\.test\\.ts$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/include/portus/ws\\.hpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/tests/ws_test\\.cpp$"
     }
   ]
 }
