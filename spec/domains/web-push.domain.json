@@ -9,6 +9,12 @@
     },
     {
       "pathPattern": "(^|/)test/push\\.test\\.ts$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/include/portus/push\\.hpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/tests/push_test\\.cpp$"
     }
   ]
 }

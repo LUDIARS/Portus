@@ -6,6 +6,12 @@
   "membership": [
     {
       "pathPattern": "(^|/)src/log/(?:.*/)?[^/]+$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/include/portus/log\\.hpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/tests/log_test\\.cpp$"
     }
   ]
 }

@@ -27,6 +27,51 @@
     },
     {
       "pathPattern": "(^|/)test/misc\\.test\\.ts$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/src/core/(?:.*/)?[^/]+$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/examples/(?:.*/)?[^/]+$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/CMakeLists\\.txt$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/tests/(?:main\\.cpp|test\\.hpp)$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/include/portus/socket\\.hpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/include/portus/event_loop\\.hpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/include/portus/thread_pool\\.hpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/include/portus/tcp_conn\\.hpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/include/portus/util\\.hpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/include/portus/url\\.hpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/include/portus/json\\.hpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/include/portus/crypto\\.hpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/include/portus/id\\.hpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/include/portus/env\\.hpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/tests/core_test\\.cpp$"
     }
   ]
 }

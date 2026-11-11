@@ -76,3 +76,60 @@ bin/portus-dev.js   tsc --watch + 再起動 / ホットスワップの振り分�
 - 仕様の検証値と突き合わせる: RFC 6455 (Sec-WebSocket-Accept)、RFC 8291 Appendix A (Web Push 暗号文)、AWS ドキュメントの SigV4 署名例
 - HTTP / WebSocket は実ソケットで往復させる (ループバック、空きポート)
 - 外部サービス (S3 / Redis / 各 AI API / push サービス) への実通信はテストに含めない
+
+## 4. C++ 版 (`cpp/`)
+
+§0〜§1 の決め事はそのまま引き継ぐ。違いと追加だけを書く。使い方は `cpp/README.md`、TypeScript 版から変えた点は `docs/cpp-review.md`。
+
+### 4.1 なぜ作るか
+
+- Node のサービスは 1 つごとに V8 を抱える (待機時 約 60MB)。常駐するローカルサービスが増えるとそのまま積み上がる
+- npm で入れるサービスは、インストールのたびに依存ツリーを取り込む。C++ 版はビルド時に何も取得しない
+
+### 4.2 依存
+
+- 外部依存は **OpenSSL (libcrypto / libssl) だけ**。OS / パッケージマネージャが配るものを使い、リポジトリに同梱も取得もしない
+- §1.2 と同じく、暗号のプリミティブは自作しない。`crypto.cpp` は OpenSSL を呼ぶだけ
+- JSON・HTTP・WebSocket・RESP の解析は自作する (プロトコルの組み立てに当たる)。テストの枠も自前で、テスト用ライブラリを足さない
+
+### 4.3 実行モデル
+
+- 入出力は `poll` を使う単一スレッドのイベントループ。接続の状態はこのスレッドだけが触る (ロックを持たない)
+- HTTP のハンドラはワーカースレッドで動かし、結果をループへ戻す。ハンドラはブロックしてよい。`worker_threads = 0` でループ上の直接実行に切り替えられる
+- WebSocket のコールバックはループスレッドで呼ぶ。送信系はどのスレッドからでも呼べる (内部でループへ渡す)
+- Redis / fetch / S3 / Push は完了まで戻らない呼び出し。ワーカースレッドから使う
+- ログは専用スレッドで書く
+- `epoll` / `io_uring` / IOCP などは使わない。ローカルサービスの接続数では `poll` で足り、Linux と Windows で同じコードになる
+
+### 4.4 メモリに上限を置く
+
+外から来る入力で伸びるものには、すべて上限を持たせる。
+
+| 対象 | 上限 (既定) | 超えたとき |
+|---|---|---|
+| HTTP ヘッダ / ボディ | 16KiB / 1MiB | 431 / 413 |
+| HTTP 同時接続 / ワーカー待ち | 1024 / 1024 | 接続を閉じる / 503 |
+| WebSocket メッセージ / 送信待ち | 1MiB / 16MiB | 1009 / 切断 |
+| ログの待ち行列 | 8192 件 | 捨てて件数を残す |
+| fetch の応答 | 16MiB | 失敗 |
+| RESP の bulk / 配列 / 入れ子 | 64MiB / 100 万 / 32 | 接続を捨てる |
+| JSON の入れ子 | 64 | 解析失敗 |
+
+### 4.5 構成
+
+```
+cpp/
+  include/portus/   公開ヘッダ (モジュールごとに 1 つ)
+  src/core/         socket (OS 差の吸収) / event_loop / thread_pool / tcp_conn / json / crypto / url / env / id / util
+  src/http/         message (ヘッダ解析) / router / body / reply / server
+  src/ws/           frame / handshake / socket / server / client
+  src/log/          record (マスク) / format / sink / async_sink / logger
+  src/redis/ src/net/ src/push/ src/aws/ src/ai/
+  tests/            自前の最小テスト枠 + モジュールごとのテスト
+  examples/         最小のサーバ例
+```
+
+### 4.6 検証
+
+- §3 の検証値 (RFC 6455 / RFC 8291 / SigV4) を C++ 版でも照合する
+- AddressSanitizer + UndefinedBehaviorSanitizer と ThreadSanitizer で全テストを通す (寿命とスレッドの誤りは C++ で新しく生まれる危険なので、変更のたびに回す)
