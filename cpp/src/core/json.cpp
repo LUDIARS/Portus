@@ -307,10 +307,18 @@ private:
 			case 't': out.push_back('\t'); break;
 			case 'u': {
 				unsigned cp = parse_hex4();
-				if (cp >= 0xD800 && cp <= 0xDBFF && consume("\\u")) {
-					const unsigned lo = parse_hex4();
-					if (lo >= 0xDC00 && lo <= 0xDFFF) cp = 0x10000 + ((cp - 0xD800) << 10) + (lo - 0xDC00);
-					else cp = 0xFFFD;
+				if (cp >= 0xD800 && cp <= 0xDBFF) {
+					//後ろが低位サロゲートのときだけ対として読む。そうでなければ後ろのエスケープは
+					//読み戻して普通に解釈させる (JSON.parse は両方の符号単位を残すので、捨てると文字が消える)
+					const std::size_t back = pos_;
+					unsigned lo = 0;
+					if (consume("\\u")) lo = parse_hex4();
+					if (lo >= 0xDC00 && lo <= 0xDFFF) {
+						cp = 0x10000 + ((cp - 0xD800) << 10) + (lo - 0xDC00);
+					} else {
+						pos_ = back;
+						cp = 0xFFFD;
+					}
 				} else if (cp >= 0xD800 && cp <= 0xDFFF) {
 					cp = 0xFFFD;	//対にならないサロゲート
 				}

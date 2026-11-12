@@ -20,6 +20,12 @@ TEST(json_roundtrip, "JSON: 解析と出力が往復し、キーの順序を保�
 	CHECK_EQ(j.dump(), "{\"b\":1,\"a\":[true,null,-2.5,\"あ\\n\"],\"c\":{\"d\":\"x\"}}");
 	CHECK(j.at("missing").is_null());
 	CHECK_EQ(Json::parse("\"\\ud83d\\ude00\"").as_string(), "😀");
+	//対にならないサロゲートは U+FFFD に置き換え、後ろのエスケープは捨てずに読む
+	CHECK_EQ(Json::parse("\"\\ud800\\u0041\"").as_string(), "\xEF\xBF\xBD" "A");
+	CHECK_EQ(Json::parse("\"\\ud800\\ud83d\\ude00\"").as_string(), "\xEF\xBF\xBD" "😀");
+	CHECK_EQ(Json::parse("\"\\udc00\"").as_string(), "\xEF\xBF\xBD");
+	CHECK_EQ(Json::parse("\"x\\ud800\"").as_string(), "x\xEF\xBF\xBD");
+	CHECK_EQ(Json::parse("\"\\ud800x\"").as_string(), "\xEF\xBF\xBD" "x");
 	CHECK_EQ(Json::parse("{\"a\":1,\"a\":2}").at("a").as_number(), 2);
 	CHECK_EQ(Json(1e20).dump(), "1e+20");
 	CHECK_EQ(json_quote("a\"\x01"), "\"a\\\"\\u0001\"");
