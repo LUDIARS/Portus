@@ -1,6 +1,6 @@
 {
   "name": "external-clients",
-  "description": "外部サービスへの最小クライアント。AWS (SigV4 / S3 / 認証情報)、Redis (RESP)、AI / Notion API、共通の JSON fetch。",
+  "description": "外部サービスへの最小クライアント。AWS (SigV4 / S3 / 認証情報)、Redis (RESP)、MQTT (C++ 版の購読用)、AI / Notion API、共通の JSON fetch。",
   "presetRules": [],
   "templateRules": [],
   "membership": [
@@ -17,6 +17,9 @@
       "pathPattern": "(^|/)src/net/(?:.*/)?[^/]+$"
     },
     {
+      "pathPattern": "(^|/)cpp/src/mqtt/(?:.*/)?[^/]+$"
+    },
+    {
       "pathPattern": "(^|/)cpp/include/portus/redis\\.hpp$"
     },
     {
@@ -29,6 +32,9 @@
       "pathPattern": "(^|/)cpp/include/portus/ai\\.hpp$"
     },
     {
+      "pathPattern": "(^|/)cpp/include/portus/mqtt\\.hpp$"
+    },
+    {
       "pathPattern": "(^|/)cpp/tests/redis_test\\.cpp$"
     },
     {
@@ -36,6 +42,9 @@
     },
     {
       "pathPattern": "(^|/)cpp/tests/aws_test\\.cpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/tests/mqtt_test\\.cpp$"
     }
   ]
 }

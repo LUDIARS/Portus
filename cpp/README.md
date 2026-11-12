@@ -29,6 +29,7 @@ TypeScript 版を点検して見つけた点と、C++ 版での扱いは [docs/c
 | `portus/push.hpp` | Web Push 送信 (VAPID + aes128gcm) | `push` |
 | `portus/aws.hpp` | SigV4 署名、S3 PutObject、認証情報チェーン | `aws` |
 | `portus/redis.hpp` | Redis クライアント (RESP2) | `redis` |
+| `portus/mqtt.hpp` | MQTT 3.1.1 の購読用クライアント (QoS 0 / 1、keep-alive、自動再接続) | (なし。npm `mqtt` の置き換え) |
 | `portus/ai.hpp` | OpenAI / Anthropic / Gemini / Notion の薄いクライアント | `ai` |
 | `portus/net.hpp` | タイムアウト・リダイレクト禁止・証明書検証付きの HTTP(S) クライアント | `net` |
 | `portus/log.hpp` | 構造化ロガー (レベル / JSON / 日別ファイル / 秘匿キーのマスク) | `log` |
@@ -144,6 +145,40 @@ client->on_open = [weak = std::weak_ptr<WebSocket>(client)] { if (auto c = weak.
 - 送信待ちが 16MiB を超えた接続は切る (読まない相手にメモリを取られない)
 - クライアントは `ws://` だけ。`wss://` は持たない (TLS はリバースプロキシで終端する)
 - `connect_websocket` はホスト名の解決 (getaddrinfo) をイベントループのスレッドで行い、その間ループが止まる。接続先は IP アドレスか `localhost` にするか、起動時に呼ぶ
+
+## MQTT
+
+```cpp
+#include "portus/mqtt.hpp"
+
+MqttOptions mqtt_options;
+mqtt_options.url = "mqtt://localhost:1884";	//既定ポート 1883
+mqtt_options.client_id = "memoria-owntracks";
+mqtt_options.username = "...";	//空なら送らない
+mqtt_options.password = "...";
+
+auto mqtt = MqttClient::create(loop, mqtt_options);	//URL・設定が不正なら std::invalid_argument
+std::weak_ptr<MqttClient> weak = mqtt;
+mqtt->on_connect = [weak] {
+	//購読は接続をまたいで覚えないので、接続のたびに張り直す
+	if (auto c = weak.lock()) c->subscribe("owntracks/+/+", 1, [](bool ok) {});
+};
+mqtt->on_message = [](std::string_view topic, std::string_view payload) {};	//QoS 1 は戻った後に PUBACK
+mqtt->on_reconnect = [] {};
+mqtt->on_close = [] {};
+mqtt->on_error = [](const std::string& message) {};
+mqtt->start();
+//終了時
+mqtt->end();	//DISCONNECT を送って閉じ、再接続をやめる
+```
+
+- 使う分だけ: CONNECT (clean session、username / password)、SUBSCRIBE、受信 PUBLISH の QoS 0 / 1、PINGREQ、DISCONNECT。送信 PUBLISH・QoS 2・will・MQTT 5 は持たない
+- 切れたら `reconnect_ms` (既定 5 秒) 後に繋ぎ直す。CONNACK で断られても同じ間隔で繋ぎ直す (空回りしない)
+- `connect_timeout_ms` (既定 10 秒) は TCP 接続から CONNACK まで。`keep_alive_sec` の間何も送らなければ PINGREQ、1.5 倍の間何も届かなければ切れたとみなす
+- パケットは 1MiB (`max_packet_bytes`) まで。超えるもの・QoS 2・壊れたパケット・不正な UTF-8 のトピックは、接続を捨てて繋ぎ直す
+- `mqtt://` だけ。`mqtts://` は持たない (TLS はリバースプロキシで終端する)。URL に認証情報やパスは書けない
+- コールバックはイベントループのスレッドで呼ばれる。`start` / `subscribe` / `end` はどのスレッドからでも呼べ、コールバックの中から `end` してもよい。`end` の後はコールバックを外す
+- ホスト名の解決 (getaddrinfo) はイベントループのスレッドで行い、その間ループが止まる (`connect_websocket` と同じ)。再接続のたびに解決する
 
 ## 外向きの通信・Redis・ログ
 
