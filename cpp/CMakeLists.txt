@@ -41,6 +41,8 @@ add_library(portus STATIC
 	src/ws/client.cpp
 	src/redis/resp.cpp
 	src/redis/client.cpp
+	src/mqtt/packet.cpp
+	src/mqtt/client.cpp
 	src/net/channel.cpp
 	src/net/fetch.cpp
 	src/push/encrypt.cpp
@@ -83,6 +85,7 @@ if(PORTUS_BUILD_TESTS)
 		tests/server_test.cpp
 		tests/ws_test.cpp
 		tests/redis_test.cpp
+		tests/mqtt_test.cpp
 		tests/net_test.cpp
 		tests/push_test.cpp
 		tests/aws_test.cpp

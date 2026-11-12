@@ -7,6 +7,7 @@ namespace portus {
 static int default_port(const std::string& scheme) {
 	if (scheme == "http" || scheme == "ws") return 80;
 	if (scheme == "https" || scheme == "wss") return 443;
+	if (scheme == "mqtt") return 1883;
 	return 0;
 }
 

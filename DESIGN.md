@@ -113,6 +113,7 @@ bin/portus-dev.js   tsc --watch + 再起動 / ホットスワップの振り分�
 | ログの待ち行列 | 8192 件 | 捨てて件数を残す |
 | fetch の応答 | 16MiB | 失敗 |
 | RESP の bulk / 配列 / 入れ子 | 64MiB / 100 万 / 32 | 接続を捨てる |
+| MQTT パケット | 1MiB | 接続を捨てて再接続 |
 | JSON の入れ子 | 64 | 解析失敗 |
 
 ### 4.5 構成
@@ -124,6 +125,7 @@ cpp/
   src/http/         message (ヘッダ解析) / router / body / reply / server
   src/ws/           frame / handshake / socket / server / client
   src/log/          record (マスク) / format / sink / async_sink / logger
+  src/mqtt/         packet (組み立てと解析) / client (購読用クライアント)
   src/redis/ src/net/ src/push/ src/aws/ src/ai/
   tests/            自前の最小テスト枠 + モジュールごとのテスト
   examples/         最小のサーバ例
