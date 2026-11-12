@@ -1,7 +1,8 @@
-#include <cstdio>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 
+#include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/ssl.h>
@@ -186,10 +187,16 @@ struct TlsServer {
 		X509_EXTENSION_free(san);
 		X509_sign(cert, key, EVP_sha256());
 
+		//PEM はメモリ BIO に書いてから、ファイルへはこちらの C++ ランタイムで書く。
+		//  Windows では OpenSSL が別 DLL で C ランタイムも別なので、こちらの FILE* を渡すと
+		//  (PEM_write_X509 など *_fp 系) applink が無い限り OPENSSL_Uplink でプロセスが落ちる
 		ca_file = std::filesystem::temp_directory_path() / ("portus-ca-" + uuidv4() + ".pem");
-		std::FILE* f = std::fopen(ca_file.string().c_str(), "wb");
-		PEM_write_X509(f, cert);
-		std::fclose(f);
+		BIO* mem = BIO_new(BIO_s_mem());
+		PEM_write_bio_X509(mem, cert);
+		char* pem = nullptr;
+		const long pem_len = BIO_get_mem_data(mem, &pem);
+		std::ofstream(ca_file, std::ios::binary).write(pem, pem_len);
+		BIO_free(mem);
 
 		ctx = SSL_CTX_new(TLS_server_method());
 		SSL_CTX_use_certificate(ctx, cert);
@@ -212,7 +219,7 @@ struct TlsServer {
 			const socket_t fd = accept_tcp(listener.fd, nullptr);
 			if (fd == kInvalidSocket) continue;
 			SSL* ssl = SSL_new(ctx);
-			SSL_set_fd(ssl, static_cast<int>(fd));
+			SSL_set_fd(ssl, static_cast<int>(fd));	//Windows の SOCKET を int にする理由は src/net/channel.cpp を参照
 
 			const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
 			const auto pump = [&](const std::function<int()>& step) {

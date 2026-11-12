@@ -90,17 +90,38 @@ static bool last_error_in_progress() {
 #endif
 }
 
+#ifdef _WIN32
+//Winsock の長さは int なので、大きな len をそのまま渡すと桁あふれする
+static int winsock_len(std::size_t len, std::size_t cap) {
+	return static_cast<int>(len < cap ? len : cap);
+}
+
+//1 回の send に渡す上限。Winsock は送信バッファ (SO_SNDBUF) に少しでも空きがあると、非ブロッキングの send に
+//  渡された分を大きさに関係なく丸ごと受け取る (8 MB を渡せば 8 MB がカーネルに入る)。すると TcpConn には
+//  送り切ったように見え、読まない相手への送信が詰まっても write_timeout_ms が効かず、遅い相手には
+//  keep-alive の期限が送信中から数えられて切られる。区切って渡し、カーネルに溜まる量を SO_SNDBUF + 1 回分に抑える
+static const std::size_t kWinsockSendChunk = 64 * 1024;
+#endif
+
 long socket_recv(socket_t fd, char* buf, std::size_t len) {
-	return static_cast<long>(::recv(static_cast<native_t>(fd), buf, static_cast<int>(len), 0));
+#ifdef _WIN32
+	return static_cast<long>(::recv(static_cast<native_t>(fd), buf, winsock_len(len, 0x7fffffff), 0));
+#else
+	return static_cast<long>(::recv(fd, buf, len, 0));
+#endif
 }
 
 long socket_send(socket_t fd, const char* buf, std::size_t len) {
+#ifdef _WIN32
+	return static_cast<long>(::send(static_cast<native_t>(fd), buf, winsock_len(len, kWinsockSendChunk), 0));
+#else
 #ifdef MSG_NOSIGNAL
 	const int flags = MSG_NOSIGNAL;	//相手が切れていても SIGPIPE で落ちない
 #else
 	const int flags = 0;
 #endif
-	return static_cast<long>(::send(static_cast<native_t>(fd), buf, static_cast<int>(len), flags));
+	return static_cast<long>(::send(fd, buf, len, flags));
+#endif
 }
 
 std::vector<SockAddr> resolve_tcp(const std::string& host, int port) {

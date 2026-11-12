@@ -11,12 +11,23 @@ namespace portus {
 
 namespace {
 
+//既定の CA。Linux などは OS の CA ファイル / ディレクトリ (SSL_CERT_FILE / SSL_CERT_DIR で差し替え可)
+int load_default_ca(SSL_CTX* ctx) {
+	if (SSL_CTX_set_default_verify_paths(ctx) != 1) return 0;
+#if defined(_WIN32) && OPENSSL_VERSION_NUMBER >= 0x30200000L
+	//Windows の既定パスはビルド時の OPENSSLDIR (たいてい存在しない) を指すだけで、OS の証明書ストアは見ない。
+	//  そのままだと公開サーバへの https がすべて検証失敗になるので、OpenSSL 3.2 からの Windows ストア (ROOT) を足す
+	if (SSL_CTX_load_verify_store(ctx, "org.openssl.winstore://") != 1) return 0;
+#endif
+	return 1;
+}
+
 SSL_CTX* new_context(const std::string& ca_file) {
 	SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
 	if (!ctx) throw FetchError("tls: cannot create context");
 	SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION);
 	SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, nullptr);
-	const int ok = ca_file.empty() ? SSL_CTX_set_default_verify_paths(ctx) : SSL_CTX_load_verify_locations(ctx, ca_file.c_str(), nullptr);
+	const int ok = ca_file.empty() ? load_default_ca(ctx) : SSL_CTX_load_verify_locations(ctx, ca_file.c_str(), nullptr);
 	if (ok != 1) {
 		SSL_CTX_free(ctx);
 		throw FetchError("tls: cannot load CA certificates");
@@ -63,6 +74,9 @@ Channel::Channel(const std::string& host, int port, bool tls, const std::string&
 		ssl_ = ssl;
 
 		//証明書の名前が接続先と一致することまで検証する
+		//  SSL_set_fd は int を取る。Windows の SOCKET は 64 ビットの型だが、値はカーネルのハンドルで、
+		//  32 ビットと 64 ビットのプロセス間で受け渡せるよう上位が符号拡張になる (下位 32 ビットで足りる) と OS が保証している。
+		//  OpenSSL 自身も Windows のソケットを int で持つので、この変換で値は失われない
 		if (SSL_set_fd(ssl, static_cast<int>(fd_)) != 1 || SSL_set_tlsext_host_name(ssl, host.c_str()) != 1 || SSL_set1_host(ssl, host.c_str()) != 1) {
 			throw FetchError("tls: cannot configure session");
 		}

@@ -71,9 +71,10 @@ TEST(log_levels_child, "ログ: レベルで絞り、child がスコープと固
 }
 
 TEST(log_file_async, "ログ: 専用スレッド経由で日別ファイルへ JSON Lines を書く") {
-	const std::filesystem::path dir = std::filesystem::temp_directory_path() / ("portus-log-" + uuidv4());
+	//日本語を含むパスでも書ける (Windows で ANSI コードページに落とすと別の名前になるか開けない)
+	const std::filesystem::path dir = std::filesystem::temp_directory_path() / std::filesystem::u8path("portus-log-ログ-" + uuidv4());
 	{
-		auto file = std::make_shared<DailyFileSink>(dir.string(), "svc");
+		auto file = std::make_shared<DailyFileSink>(dir.u8string(), "svc");	//DailyFileSink のパスは UTF-8
 		auto async = std::make_shared<AsyncSink>(SinkList{ file });
 		Logger log("svc", LogLevel::Info, { async });
 		for (int i = 0; i < 500; ++i) log.info("line", Json::object({ { "i", i } }));
@@ -95,12 +96,22 @@ TEST(log_file_async, "ログ: 専用スレッド経由で日別ファイルへ J
 }
 
 TEST(log_unwritable_dir, "ログ: 書けないディレクトリでも落ちない") {
-	DailyFileSink sink("/proc/portus-no-such-dir/x", "svc");
-	LogRecord rec;
-	rec.time = "2026-01-02T03:04:05.678Z";
-	sink.write(rec);
-	sink.flush();
-	CHECK(true);
+	//親が普通のファイルなら、どの OS でもディレクトリは作れずファイルも開けない
+	//  (/proc のような OS 固有のパスは Windows では今のドライブ直下の普通のパスになり、作れてしまう)
+	const std::filesystem::path blocker = std::filesystem::temp_directory_path() / ("portus-log-file-" + uuidv4());
+	std::ofstream(blocker, std::ios::binary) << "x";
+	const std::filesystem::path dir = blocker / "x";
+	{
+		DailyFileSink sink(dir.u8string(), "svc");
+		LogRecord rec;
+		rec.time = "2026-01-02T03:04:05.678Z";
+		sink.write(rec);
+		sink.flush();
+	}
+	std::error_code ec;
+	CHECK(!std::filesystem::exists(dir, ec));
+	CHECK(std::filesystem::is_regular_file(blocker));
+	std::filesystem::remove(blocker);
 }
 
 TEST(log_async_drop, "ログ: 出力が詰まったら溜め込まずに捨て、件数を残す") {
