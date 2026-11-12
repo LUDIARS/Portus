@@ -39,6 +39,7 @@ int socket_error(socket_t fd);	//SO_ERROR
 bool last_error_would_block();
 
 //戻り値: 転送バイト数 / 0 = 相手が閉じた (recv) / -1 = エラー (last_error_would_block で判別)
+//  send は len より少なく送ることがある (Windows では 1 回 64 KB まで)。呼び出し側は残りを送り直す
 long socket_recv(socket_t fd, char* buf, std::size_t len);
 long socket_send(socket_t fd, const char* buf, std::size_t len);
 

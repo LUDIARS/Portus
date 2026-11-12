@@ -45,8 +45,9 @@ bool wait_until(const std::function<bool()>& cond, int timeout_ms = 3000);
 //ループバックの port へ data を送り、相手が閉じるか timeout になるまでに届いたものを返す
 std::string raw_exchange(int port, const std::string& data, int timeout_ms = 3000);
 
-//受信バッファを固定する (OS の自動拡張で、読まない相手の分まで OS に吸い込まれないように)
-void set_receive_buffer(portus::socket_t fd, int bytes);
+//受信バッファを bytes に固定してループバックの port へ接続する (OS の自動拡張で、読まない相手の分まで OS に吸い込まれないように)
+//  granted には OS が実際に取った大きさ (getsockopt) を入れる。Linux は頼んだ値の倍を返す
+portus::socket_t connect_with_receive_buffer(int port, int bytes, int* granted);
 
 #ifndef _WIN32
 //プロセスの fd を使い切った状態を作る (accept が EMFILE で失敗する状況)。破棄で fd と上限を元に戻す

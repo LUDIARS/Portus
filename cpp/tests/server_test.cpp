@@ -339,8 +339,9 @@ TEST(server_pipeline_backpressure, "サーバ: 応答を読まずに要求だけ
 	const int total = 40;
 	std::string batch;
 	for (int i = 0; i < total; ++i) batch += "GET /big HTTP/1.1\r\nHost: x\r\n\r\n";
-	const socket_t fd = connect_tcp("127.0.0.1", f.port, 2000);
-	testing::set_receive_buffer(fd, 64 * 1024);
+	int granted = 0;
+	const socket_t fd = testing::connect_with_receive_buffer(f.port, 64 * 1024, &granted);
+	CHECK(granted > 0 && granted <= 256 * 1024);	//読み手が OS に吸い込ませる量が、送る量よりずっと小さいという前提
 	send_all(fd, batch);
 	std::this_thread::sleep_for(std::chrono::milliseconds(200));
 	//OS の送受信バッファに入る分 (数 MB) だけ先に進む。全件の応答を溜め込まない
@@ -364,8 +365,9 @@ TEST(server_slow_reader, "サーバ: 遅くても受け取っている相手に�
 	};
 	Fixture f(std::move(options));
 
-	const socket_t fd = connect_tcp("127.0.0.1", f.port, 2000);
-	testing::set_receive_buffer(fd, 64 * 1024);
+	int granted = 0;
+	const socket_t fd = testing::connect_with_receive_buffer(f.port, 64 * 1024, &granted);
+	CHECK(granted > 0 && granted <= 256 * 1024);	//読み手が OS に吸い込ませる量が、送る量よりずっと小さいという前提
 	send_all(fd, "GET /big HTTP/1.1\r\nHost: x\r\n\r\n");
 	//keep-alive の期限より長くかけて先頭を読む (この間サーバはまだ送り切っていない)
 	const auto started = std::chrono::steady_clock::now();
@@ -393,8 +395,9 @@ TEST(server_write_stall, "サーバ: 応答をまったく受け取らない相�
 	options.routes = { { "GET", "/huge", [&](RequestContext&) -> Reply { return huge; } } };
 	Fixture f(std::move(options));
 
-	const socket_t fd = connect_tcp("127.0.0.1", f.port, 2000);
-	testing::set_receive_buffer(fd, 64 * 1024);
+	int granted = 0;
+	const socket_t fd = testing::connect_with_receive_buffer(f.port, 64 * 1024, &granted);
+	CHECK(granted > 0 && granted <= 256 * 1024);	//読み手が OS に吸い込ませる量が、送る量よりずっと小さいという前提
 	send_all(fd, "GET /huge HTTP/1.1\r\nHost: x\r\n\r\n");
 	std::this_thread::sleep_for(std::chrono::milliseconds(500));
 	bool eof = false;

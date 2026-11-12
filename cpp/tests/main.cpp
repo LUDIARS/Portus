@@ -1,10 +1,14 @@
 #include <cstdio>
 #include <cstring>
+#include <stdexcept>
 
 #ifdef _WIN32
 #include <winsock2.h>
+#include <ws2tcpip.h>
 #else
+#include <arpa/inet.h>
 #include <fcntl.h>
+#include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/resource.h>
 #include <sys/time.h>
@@ -59,12 +63,41 @@ std::string raw_exchange(int port, const std::string& data, int timeout_ms) {
 	return out;
 }
 
-void set_receive_buffer(portus::socket_t fd, int bytes) {
+portus::socket_t connect_with_receive_buffer(int port, int bytes, int* granted) {
+	//接続の前に決める。受信窓の拡大係数は SYN で決まり、Windows は SO_RCVBUF を明示したソケットだけ受信窓の自動調整を止める。
+	//  接続後に変えるのでは、どこまで効くかが OS 次第になる
+	portus::net_init();
+	struct sockaddr_in addr;
+	std::memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(static_cast<unsigned short>(port));
+	addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	int got = 0;
+	socklen_t got_len = sizeof(got);
 #ifdef _WIN32
-	setsockopt(static_cast<SOCKET>(fd), SOL_SOCKET, SO_RCVBUF, reinterpret_cast<const char*>(&bytes), sizeof(bytes));
+	const SOCKET fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (fd == INVALID_SOCKET) throw std::runtime_error("socket() failed");
+	setsockopt(fd, SOL_SOCKET, SO_RCVBUF, reinterpret_cast<const char*>(&bytes), sizeof(bytes));
+	if (::connect(fd, reinterpret_cast<const struct sockaddr*>(&addr), sizeof(addr)) != 0) {
+		closesocket(fd);
+		throw std::runtime_error("connect() failed");
+	}
+	getsockopt(fd, SOL_SOCKET, SO_RCVBUF, reinterpret_cast<char*>(&got), &got_len);
 #else
+	const int fd = ::socket(AF_INET, SOCK_STREAM, 0);
+	if (fd < 0) throw std::runtime_error("socket() failed");
 	setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &bytes, sizeof(bytes));
+	if (::connect(fd, reinterpret_cast<const struct sockaddr*>(&addr), sizeof(addr)) != 0) {
+		::close(fd);
+		throw std::runtime_error("connect() failed");
+	}
+	getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &got, &got_len);
 #endif
+	if (granted) *granted = got;
+	const portus::socket_t s = static_cast<portus::socket_t>(fd);
+	portus::set_nonblocking(s);
+	portus::set_nodelay(s);
+	return s;
 }
 
 #ifndef _WIN32
