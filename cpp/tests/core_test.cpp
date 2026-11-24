@@ -8,6 +8,8 @@
 #include "portus/util.hpp"
 #include "test.hpp"
 
+#include <memory>
+
 using namespace portus;
 
 TEST(json_roundtrip, "JSON: 解析と出力が往復し、キーの順序を保つ") {
@@ -181,11 +183,10 @@ TEST(event_loop_cancel_in_batch, "イベントループ: 同じ回に期限が�
 	std::atomic<int> fired{0};
 	std::atomic<bool> first_ran{false};
 	lt.loop().dispatch_sync([&] {
-		std::uint64_t* second = new std::uint64_t(0);
+		auto second = std::make_shared<std::uint64_t>(0);
 		lt.loop().set_timer(1, [&, second] {
 			first_ran = true;
 			lt.loop().cancel_timer(*second);
-			delete second;
 		});
 		*second = lt.loop().set_timer(2, [&] { ++fired; }, true);
 		//両方の期限が過ぎてから timers を回させる (同じ回に集まる)

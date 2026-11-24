@@ -129,7 +129,13 @@ FetchResponse fetch(const std::string& url_text, const FetchRequest& request) {
 
 	Reader reader{ channel, std::string() };
 	const ResponseHead head = read_head(reader);
-	if (head.status >= 300 && head.status < 400 && head.status != 304) throw FetchError("redirect not allowed (" + std::to_string(head.status) + ")");
+	if (head.status >= 300 && head.status < 400 && head.status != 304) {
+		if (!request.return_redirects) throw FetchError("redirect not allowed (" + std::to_string(head.status) + ")");
+		FetchResponse redirect;
+		redirect.status = head.status;
+		redirect.headers = head.headers;
+		return redirect;	//本文は読まない (接続は閉じる)
+	}
 
 	FetchResponse res;
 	res.status = head.status;

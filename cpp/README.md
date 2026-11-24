@@ -200,7 +200,7 @@ send_notification(subscription, "{\"title\":\"通知\"}", { "mailto:admin@exampl
 put_object("ap-northeast-1", "my-bucket", "logs/a.txt", "body");   // 認証: 環境変数 → ~/.aws/credentials → IMDSv2
 ```
 
-- `fetch` はリダイレクトに従わない、合計時間で打ち切る、応答は 16MiB まで、https は証明書の連鎖とホスト名を検証する (`ca_file` で CA を指定可)
+- `fetch` はリダイレクトに従わない (`return_redirects` で 3xx の頭だけを受け取り、転送先は呼び出し側で確かめる)、合計時間で打ち切る、応答は 16MiB まで、https は証明書の連鎖とホスト名を検証する (`ca_file` で CA を指定可)
 - `HTTPS_PROXY` などのプロキシ設定は見ない。名前解決 (`getaddrinfo`) には個別のタイムアウトが無い
 - ログは `logger_from_env(scope)` (`LOG_LEVEL` / `LOG_FORMAT` / `LOG_DIR`)。書き込みは専用スレッドで行い、詰まったら溜め込まずに捨てて件数を残す
 - ライブラリ初期化時に `SIGPIPE` を無視に設定する (POSIX)。切れた相手への書き込みをエラーとして受け取るため

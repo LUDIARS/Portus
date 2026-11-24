@@ -18,6 +18,9 @@ struct FetchRequest {
 	int timeout_ms = 120000;	//接続から応答を読み切るまでの合計
 	std::size_t max_response_bytes = 16 * 1024 * 1024;
 	std::string ca_file;		//https の検証に使う CA (PEM)。空なら OS / OpenSSL の既定
+	//true なら 3xx (304 以外) を FetchError にせず、status と headers (Location を含む) だけを返す。本文は読まない。
+	//転送先に従うかは呼び出し側が決める (転送先のホストを確かめてから、もう一度 fetch する)
+	bool return_redirects = false;
 };
 
 struct FetchResponse {
@@ -33,7 +36,7 @@ public:
 	using std::runtime_error::runtime_error;
 };
 
-//http:// / https:// へ 1 往復する。リダイレクトには従わない (3xx は FetchError)
+//http:// / https:// へ 1 往復する。リダイレクトには従わない (3xx は FetchError。return_redirects なら応答の頭だけを返す)
 FetchResponse fetch(const std::string& url, const FetchRequest& request = {});
 
 //2xx 以外の応答

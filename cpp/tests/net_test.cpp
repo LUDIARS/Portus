@@ -137,7 +137,27 @@ TEST(fetch_no_redirect, "fetch: リダイレクトには従わない") {
 	CHECK_EQ(error_of(s.url()), "redirect not allowed (302)");
 }
 
-TEST(fetch_timeout, "fetch: 応答が来なければ時間で打ち切る") {
+TEST(fetch_return_redirects, "fetch: return_redirects なら 3xx の頭だけを返し、転送先には行かない") {
+	CannedServer s("HTTP/1.1 302 Found\r\nLocation: https://objects.example/asset?x=1\r\nContent-Length: 5\r\n\r\nhello");
+	FetchRequest req;
+	req.return_redirects = true;
+	const FetchResponse res = fetch(s.url(), req);
+	CHECK_EQ(res.status, 302);
+	CHECK_EQ(res.headers.get("location"), std::string("https://objects.example/asset?x=1"));
+	CHECK(res.body.empty());
+	CHECK(!res.ok());
+}
+
+TEST(fetch_return_redirects_keeps_304, "fetch: return_redirects でも 304 はふつうの応答のまま") {
+	CannedServer s("HTTP/1.1 304 Not Modified\r\nETag: \"a\"\r\n\r\n");
+	FetchRequest req;
+	req.return_redirects = true;
+	const FetchResponse res = fetch(s.url(), req);
+	CHECK_EQ(res.status, 304);
+	CHECK_EQ(res.headers.get("etag"), std::string("\"a\""));
+}
+
+TEST(fetch_timeout,"fetch: 応答が来なければ時間で打ち切る") {
 	CannedServer s("", false);
 	FetchRequest req;
 	req.timeout_ms = 200;

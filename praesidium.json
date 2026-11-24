@@ -1,0 +1,885 @@
+{
+  "version": 1,
+  "native": [
+    {
+      "file": "cpp/src/net/fetch.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/examples/hello_server.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/ai/anthropic.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/ai/gemini.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/ai/notion.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/ai/openai.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/aws/credentials.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/aws/s3.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/aws/sigv4.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/core/crypto.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/core/encoding.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/core/env.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/core/event_loop.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/core/id.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/core/json.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/core/socket.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/core/tcp_conn.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/core/thread_pool.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/core/url.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/core/util.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/http/body.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/http/message.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/http/reply.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/http/router.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/http/server.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/log/async_sink.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/log/format.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/log/logger.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/log/record.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/log/sink.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/mqtt/client.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/mqtt/packet.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/net/channel.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/push/encrypt.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/push/endpoint.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/push/send.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/push/vapid.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/redis/client.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/redis/resp.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/ws/client.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/ws/frame.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/ws/handshake.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/ws/server.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/src/ws/socket.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/tests/aws_test.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/tests/core_test.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/tests/http_test.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/tests/log_test.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/tests/main.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/tests/mqtt_test.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/tests/net_test.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/tests/push_test.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/tests/redis_test.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/tests/server_test.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    },
+    {
+      "file": "cpp/tests/ws_test.cpp",
+      "standard": "c++17",
+      "includes": [
+        "cpp/include"
+      ],
+      "defines": [
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+        "_WIN32_WINNT=0x0A00",
+        "_CRT_SECURE_NO_WARNINGS"
+      ],
+      "packages": [
+        "odeum-openssl-3"
+      ]
+    }
+  ]
+}
