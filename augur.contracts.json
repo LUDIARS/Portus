@@ -8,5 +8,11 @@
     "symbol": "portus::page_fetch_count",
     "file": "cpp/src/paging/keyset.cpp",
     "module": "cpp/src/paging/page_count.contract.hpp"
+  }, {
+    "id": "C-2",
+    "criterion": "C-2 valid_db_query(query): SQL・パラメーター・取得行数の上限とテキスト表現を検査してからドライバーに渡す",
+    "symbol": "portus::valid_db_query",
+    "file": "cpp/src/paging/db.cpp",
+    "module": "cpp/src/paging/db_query.contract.hpp"
   }]
 }

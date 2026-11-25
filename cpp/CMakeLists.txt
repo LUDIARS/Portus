@@ -13,6 +13,7 @@ find_package(OpenSSL 3.0 REQUIRED)
 find_package(Threads REQUIRED)
 
 add_library(portus STATIC
+	src/paging/db.cpp
 	src/paging/keyset.cpp
 	src/core/socket.cpp
 	src/core/event_loop.cpp
@@ -81,6 +82,7 @@ if(PORTUS_BUILD_TESTS)
 	add_executable(portus_tests
 		tests/main.cpp
 		tests/keyset_test.cpp
+		tests/db_test.cpp
 		tests/core_test.cpp
 		tests/log_test.cpp
 		tests/http_test.cpp

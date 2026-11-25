@@ -5,6 +5,9 @@
   "templateRules": [],
   "membership": [
     {
+      "pathPattern": "(^|/)(cpp/include/portus/db\\.hpp|cpp/tests/db_test\\.cpp|docs/db-port\\.md)$"
+    },
+    {
       "pathPattern": "(^|/)cpp/include/portus/keyset\\.hpp$"
     },
     {

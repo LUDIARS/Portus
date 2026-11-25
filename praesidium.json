@@ -2,6 +2,18 @@
   "version": 1,
   "native": [
     {
+      "file": "cpp/src/paging/db.cpp",
+      "standard": "c++17",
+      "includes": ["cpp/include", "cpp/include/portus", "cpp/src/paging", "cpp/src/paging/augur"],
+      "defines": ["NOMINMAX", "WIN32_LEAN_AND_MEAN", "_WIN32_WINNT=0x0A00", "_CRT_SECURE_NO_WARNINGS"]
+    },
+    {
+      "file": "cpp/tests/db_test.cpp",
+      "standard": "c++17",
+      "includes": ["cpp/include", "cpp/include/portus"],
+      "defines": ["NOMINMAX", "WIN32_LEAN_AND_MEAN", "_WIN32_WINNT=0x0A00", "_CRT_SECURE_NO_WARNINGS"]
+    },
+    {
       "file": "cpp/src/paging/keyset.cpp",
       "standard": "c++17",
       "includes": ["cpp/include", "cpp/include/portus", "cpp/src/paging", "cpp/src/paging/augur"],
