@@ -1,9 +1,9 @@
 # Portus C++
 
-Portus の C++17 実装。TypeScript 版 (`../src`) と同じ決め事 ([DESIGN.md](../DESIGN.md)) を、Node を載せずに動く静的ライブラリ `libportus` として提供する。
+Portus の C++23 実装。TypeScript 版 (`../src`) と同じ決め事 ([DESIGN.md](../DESIGN.md)) を、Node を載せずに動く静的ライブラリ `libportus` として提供する。
 
 - **目的 1: メモリ。** 常駐するローカルサービス (Memoria など) 1 つごとに V8 を抱えない。待機時 約 6MB (Node 版は約 62MB、下の計測)
-- **目的 2: サプライチェーン。** `npm install` で実行時の依存ツリーを取り込まない。外部依存は OS / パッケージマネージャが配る OpenSSL だけで、ビルド時に何も取得しない
+- **目的 2: サプライチェーン。** OpenSSL と LUDIARS 共通の Lorica をセットアップ時に用意する。Portus のビルド時には何も取得しない
 - 高度な実装はしない。入出力は `poll` の単一イベントループ、ブロックする処理はワーカースレッド、という単純な形に留める
 
 TypeScript 版を点検して見つけた点と、C++ 版での扱いは [docs/cpp-review.md](../docs/cpp-review.md)。
@@ -33,6 +33,7 @@ TypeScript 版を点検して見つけた点と、C++ 版での扱いは [docs/c
 | `portus/ai.hpp` | OpenAI / Anthropic / Gemini / Notion の薄いクライアント | `ai` |
 | `portus/net.hpp` | タイムアウト・リダイレクト禁止・証明書検証付きの HTTP(S) クライアント | `net` |
 | `portus/log.hpp` | 構造化ロガー (レベル / JSON / 日別ファイル / 秘匿キーのマスク) | `log` |
+| `portus/file_follow.hpp` | [ファイル追従](../spec/feature/file-follow.md)。識別子、開いた時点の長さ、改行単位の有界読み取り | なし |
 | `portus/env.hpp` `id.hpp` `json.hpp` `crypto.hpp` | `.env`、UUID v4、JSON、OpenSSL の薄い包み | `env` `id` |
 | `portus/event_loop.hpp` `thread_pool.hpp` `tcp_conn.hpp` | イベントループ、ワーカー、非ブロッキング接続 | (Node 本体) |
 
@@ -40,7 +41,7 @@ TypeScript 版を点検して見つけた点と、C++ 版での扱いは [docs/c
 
 ## ビルド
 
-要件: C++17 コンパイラ、CMake 3.16 以上、OpenSSL 3.x の開発パッケージ。
+C++23 コンパイラ、CMake 3.24 以上、OpenSSL 3.x の開発パッケージ、Lorica 0.1 の CMake パッケージが必要。Lorica を別の場所にインストールした場合は `-DCMAKE_PREFIX_PATH=<インストール先>` で指定する。
 
 ```
 cmake -S cpp -B cpp/build -DCMAKE_BUILD_TYPE=Release

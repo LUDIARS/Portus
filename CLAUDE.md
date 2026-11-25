@@ -16,7 +16,7 @@ LUDIARS の Node サーバ基盤ライブラリ。脆弱性報告の多い npm �
 
 鉄則は同じ。読み替えと追加だけ:
 
-- 外部依存は OpenSSL だけ。ライブラリを同梱・取得しない (`FetchContent` / サブモジュール / vcpkg マニフェストを足さない)。
+- OpenSSL と LUDIARS 共通の Lorica を事前に用意する。ライブラリを同梱・ビルド時に取得しない (`FetchContent` / サブモジュール / vcpkg マニフェストを足さない)。
 - 暗号は `src/core/crypto.cpp` から OpenSSL を呼ぶ。自作しない。
 - 接続の状態はイベントループのスレッドだけが触る。他のスレッドからは `EventLoop::post` / `dispatch` で渡す。
 - 外から来る入力で伸びるものには上限を置く (DESIGN.md §4.4)。

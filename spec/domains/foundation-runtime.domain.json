@@ -72,6 +72,12 @@
     },
     {
       "pathPattern": "(^|/)cpp/tests/core_test\\.cpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/(include/portus/file_follow\\.hpp|tests/file_follow_test\\.cpp)$"
+    },
+    {
+      "pathPattern": "(^|/)spec/feature/file-follow\\.md$"
     }
   ]
 }

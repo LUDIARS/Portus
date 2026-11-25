@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.24)
 project(portus VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -8,7 +8,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(PORTUS_BUILD_TESTS "Build the test runner" ON)
 option(PORTUS_BUILD_EXAMPLES "Build the example server" ON)
 
-#外部依存は OpenSSL (暗号と TLS) とスレッドだけ。取得はせず、OS / パッケージマネージャのものを使う
+# ビルド時には取得せず、セットアップ済みのパッケージを使う。
+find_package(Lorica 0.1 CONFIG REQUIRED)
 find_package(OpenSSL 3.0 REQUIRED)
 find_package(Threads REQUIRED)
 
@@ -26,6 +27,8 @@ add_library(portus STATIC
 	src/core/crypto.cpp
 	src/core/id.cpp
 	src/core/env.cpp
+	src/core/file_follow.cpp
+	src/core/follow_file.cpp
 	src/log/record.cpp
 	src/log/format.cpp
 	src/log/sink.cpp
@@ -60,8 +63,10 @@ add_library(portus STATIC
 	src/ai/notion.cpp
 )
 add_library(portus::portus ALIAS portus)
-target_include_directories(portus PUBLIC include)
-target_link_libraries(portus PUBLIC OpenSSL::SSL OpenSSL::Crypto Threads::Threads)
+target_include_directories(portus PUBLIC include PRIVATE src/paging)
+target_compile_features(portus PRIVATE cxx_std_23)
+target_link_libraries(portus PUBLIC OpenSSL::SSL OpenSSL::Crypto Threads::Threads PRIVATE Lorica::boundary)
+lorica_harden_target(portus)
 if(WIN32)
 	target_link_libraries(portus PUBLIC ws2_32)
 endif()
@@ -75,6 +80,7 @@ endif()
 if(PORTUS_BUILD_EXAMPLES)
 	add_executable(portus_hello examples/hello_server.cpp)
 	target_link_libraries(portus_hello PRIVATE portus)
+	lorica_harden_target(portus_hello)
 endif()
 
 if(PORTUS_BUILD_TESTS)
@@ -84,6 +90,7 @@ if(PORTUS_BUILD_TESTS)
 		tests/keyset_test.cpp
 		tests/db_test.cpp
 		tests/core_test.cpp
+		tests/file_follow_test.cpp
 		tests/log_test.cpp
 		tests/http_test.cpp
 		tests/server_test.cpp
@@ -95,6 +102,7 @@ if(PORTUS_BUILD_TESTS)
 		tests/aws_test.cpp
 	)
 	target_link_libraries(portus_tests PRIVATE portus)
+	lorica_harden_target(portus_tests)
 	if(MSVC)
 		target_compile_options(portus_tests PRIVATE /utf-8)
 	endif()

@@ -1,5 +1,5 @@
 # C++ 版 (cpp/) のビルドとテスト。Linux はサニタイザ付き、Windows は MSVC で回す。
-# 依存は OS / ランナーが持つ OpenSSL だけで、ビルド中に何も取得しない。
+# OpenSSL はランナーが持つもの、Lorica はセットアップ時に用意する。
 name: cpp
 
 on:
@@ -25,14 +25,25 @@ jobs:
           - { name: tsan, flags: "-fsanitize=thread -fno-omit-frame-pointer" }
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: LUDIARS/Lorica
+          ref: e4d363ac6d5ce7097f981d18b2e56c93e60c595d # v0.1.0
+          path: .ci/lorica
+          persist-credentials: false
       - name: Install build tools
         run: sudo apt-get update && sudo apt-get install -y ninja-build libssl-dev
+      - name: Install Lorica
+        run: |
+          cmake -S .ci/lorica -B lorica-build -DCMAKE_BUILD_TYPE=Release
+          cmake --build lorica-build --config Release
+          cmake --install lorica-build --config Release --prefix "${{ runner.temp }}/lorica"
       # ランナーの既定 (アドレス空間の乱数化が強い) だと TSan が起動時に落ちる
       - name: Lower ASLR entropy for TSan
         if: matrix.config.name == 'tsan'
         run: sudo sysctl vm.mmap_rnd_bits=28
       - name: Configure
-        run: cmake -S cpp -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_CXX_FLAGS=${{ matrix.config.flags }}"
+        run: cmake -S cpp -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_PREFIX_PATH=${{ runner.temp }}/lorica" "-DCMAKE_CXX_FLAGS=${{ matrix.config.flags }}"
       - name: Build
         run: cmake --build build
       - name: Test
@@ -43,8 +54,19 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: LUDIARS/Lorica
+          ref: e4d363ac6d5ce7097f981d18b2e56c93e60c595d # v0.1.0
+          path: .ci/lorica
+          persist-credentials: false
+      - name: Install Lorica
+        run: |
+          cmake -S .ci/lorica -B lorica-build
+          cmake --build lorica-build --config Release
+          cmake --install lorica-build --config Release --prefix "${{ runner.temp }}/lorica"
       - name: Configure
-        run: cmake -S cpp -B build
+        run: cmake -S cpp -B build "-DCMAKE_PREFIX_PATH=${{ runner.temp }}/lorica"
       - name: Build
         run: cmake --build build --config Release
       - name: Test
