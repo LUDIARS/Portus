@@ -1,0 +1,20 @@
+{
+  "name": "data-paging",
+  "description": "データの読み出し。キーセット方式のページ読み (DB 読み取り関数の差し込み、先読み、上限、最終ページの判定) と、今後の DB 読み書きの差し込み口。PostgreSQL などのクライアント本体は持たない (外部依存は OpenSSL だけ)。",
+  "presetRules": [],
+  "templateRules": [],
+  "membership": [
+    {
+      "pathPattern": "(^|/)cpp/include/portus/keyset\\.hpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/src/paging/(?:.*/)?[^/]+$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/tests/keyset_test\\.cpp$"
+    },
+    {
+      "pathPattern": "(^|/)docs/keyset-page\\.md$"
+    }
+  ]
+}

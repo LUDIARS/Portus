@@ -133,5 +133,7 @@ cpp/
 
 ### 4.6 検証
 
+Actio の C++ 移行で利用するページ読みと DB 境界は [キーセットのページ読み](docs/keyset-page.md) に定める。
+
 - §3 の検証値 (RFC 6455 / RFC 8291 / SigV4) を C++ 版でも照合する
 - AddressSanitizer + UndefinedBehaviorSanitizer と ThreadSanitizer で全テストを通す (寿命とスレッドの誤りは C++ で新しく生まれる危険なので、変更のたびに回す)

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "importFrom": "augur/contract_runtime.hpp",
+  "runtimeFile": "cpp/src/paging/augur/contract_runtime.hpp",
+  "contracts": [{
+    "id": "C-1",
+    "criterion": "C-1 page_fetch_count(limit, maximum): 有効なページ件数には先読み一行を加え、不正な件数では取得を要求しない",
+    "symbol": "portus::page_fetch_count",
+    "file": "cpp/src/paging/keyset.cpp",
+    "module": "cpp/src/paging/page_count.contract.hpp"
+  }]
+}
