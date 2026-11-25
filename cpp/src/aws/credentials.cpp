@@ -1,19 +1,59 @@
 #include "portus/aws.hpp"
 
-#include <cstdio>
-#include <ctime>
+#include <array>
+#include <charconv>
+#include <chrono>
 #include <fstream>
 #include <map>
 #include <mutex>
 #include <sstream>
 #include <stdexcept>
 
+#include "expiration.hpp"
 #include "portus/env.hpp"
 #include "portus/json.hpp"
 #include "portus/net.hpp"
 #include "portus/util.hpp"
+#include "augur/contract_runtime.hpp" /* augur-inject:import:0328e828 */
+#include "expiration.contract.hpp" /* augur-inject:contract-predicate:183f008d */
 
 namespace portus {
+
+namespace detail {
+
+static int read_decimal(std::string_view field) {
+	unsigned value = 0;
+	const char* const end = field.data() + field.size();
+	const auto parsed = std::from_chars(field.data(), end, value);
+	if (parsed.ec != std::errc{} || parsed.ptr != end) return -1;
+	return static_cast<int>(value);
+}
+
+// Read the UTC timestamp through whole seconds, as in the previous IMDS parser.
+std::int64_t parse_iso_time(std::string_view text) { return ::augur::invoke_observed(::augur::ContractSpec{"C-5", "c42bc626", "cpp/src/aws/credentials.cpp:22"}, contracts::expiration_checks, [&]() -> std::int64_t { /* augur-inject:contract-wrap:c42bc626 */
+	using namespace std::chrono;
+	constexpr std::string_view pattern = "yyyy-mm-ddThh:mm:ss";
+	if (text.size() < pattern.size()) return 0;
+	for (const std::size_t offset : std::array<std::size_t, 5>{4, 7, 10, 13, 16}) {
+		if (text[offset] != pattern[offset]) return 0;
+	}
+
+	const int years = read_decimal(text.substr(0, 4));
+	const int months = read_decimal(text.substr(5, 2));
+	const int days = read_decimal(text.substr(8, 2));
+	const int hour = read_decimal(text.substr(11, 2));
+	const int minute = read_decimal(text.substr(14, 2));
+	const int second = read_decimal(text.substr(17, 2));
+	if (years < 0 || months < 1 || days < 1 || hour < 0 || hour > 23
+		|| minute < 0 || minute > 59 || second < 0 || second > 60) return 0;
+
+	const year_month_day date{year{years}, month{static_cast<unsigned>(months)}, day{static_cast<unsigned>(days)}};
+	if (!date.ok()) return 0;
+	const auto instant = sys_days{date} + hours{hour} + minutes{minute} + seconds{second};
+	return duration_cast<milliseconds>(instant.time_since_epoch()).count();
+}, text); /* augur-inject:contract-end:c42bc626 */ }
+
+}
 
 namespace {
 
@@ -40,19 +80,6 @@ std::optional<AwsCredentials> from_shared_file() {
 	std::stringstream ss;
 	ss << in.rdbuf();
 	return parse_credentials_file(ss.str(), get_env("AWS_PROFILE", "default"));
-}
-
-//2026-01-02T03:04:05Z → エポックミリ秒 (読めなければ 0)
-std::int64_t parse_iso_time(const std::string& text) {
-	int y, mo, d, h, mi, s;
-	if (std::sscanf(text.c_str(), "%4d-%2d-%2dT%2d:%2d:%2d", &y, &mo, &d, &h, &mi, &s) != 6) return 0;
-	//グレゴリオ暦の通日 (タイムゾーンに依存する mktime を避ける)
-	const int a = (14 - mo) / 12;
-	const long long yy = y + 4800 - a;
-	const long long mm = mo + 12 * a - 3;
-	const long long jdn = d + (153 * mm + 2) / 5 + 365 * yy + yy / 4 - yy / 100 + yy / 400 - 32045;
-	const long long days = jdn - 2440588;
-	return (days * 86400 + h * 3600 + mi * 60 + s) * 1000;
 }
 
 std::optional<AwsCredentials> from_instance_metadata() {
@@ -82,7 +109,7 @@ std::optional<AwsCredentials> from_instance_metadata() {
 		out.access_key_id = c.at("AccessKeyId").as_string();
 		out.secret_access_key = c.at("SecretAccessKey").as_string();
 		out.session_token = c.at("Token").as_string();
-		out.expiration_ms = parse_iso_time(c.at("Expiration").as_string());
+		out.expiration_ms = detail::parse_iso_time(c.at("Expiration").as_string());
 		if (out.access_key_id.empty() || out.secret_access_key.empty()) return std::nullopt;
 		return out;
 	} catch (const std::exception&) {

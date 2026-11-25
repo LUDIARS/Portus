@@ -26,5 +26,17 @@
     "symbol": "portus::follow_prefix",
     "file": "cpp/src/core/file_follow.cpp",
     "module": "cpp/src/core/follow_prefix.contract.hpp"
+  }, {
+    "id": "C-5",
+    "criterion": "C-5 parse_iso_time(text): AWS の UTC 有効期限をエポックミリ秒に変換し、不正な日付を 0 にする",
+    "symbol": "portus::detail::parse_iso_time",
+    "file": "cpp/src/aws/credentials.cpp",
+    "module": "cpp/src/aws/expiration.contract.hpp"
+  }, {
+    "id": "C-6",
+    "criterion": "C-6 utf8_path(text): 有効な UTF-8 のログパスを同じ UTF-8 バイト列に戻せる",
+    "symbol": "portus::utf8_path",
+    "file": "cpp/src/log/sink.cpp",
+    "module": "cpp/src/log/utf8_path.contract.hpp"
   }]
 }

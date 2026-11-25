@@ -2,7 +2,10 @@
 
 #include <cstdlib>
 #include <fstream>
+#include <memory>
+#include <optional>
 #include <sstream>
+#include <system_error>
 
 #include "portus/util.hpp"
 
@@ -73,9 +76,23 @@ std::vector<std::pair<std::string, std::string>> parse_env(std::string_view text
 	return out;
 }
 
+static std::optional<std::string> read_env(const char* name) {
+#ifdef _WIN32
+	char* buffer = nullptr;
+	const auto error = _dupenv_s(&buffer, nullptr, name);
+	const std::unique_ptr<char, decltype(&std::free)> value(buffer, &std::free);
+	if (error != 0) throw std::system_error(error, std::generic_category(), "reading environment variable");
+	if (!value) return std::nullopt;
+	return std::string(value.get());
+#else
+	const char* value = std::getenv(name);
+	if (!value) return std::nullopt;
+	return std::string(value);
+#endif
+}
+
 std::string get_env(const char* name, const std::string& fallback) {
-	const char* v = std::getenv(name);
-	return v ? std::string(v) : fallback;
+	return read_env(name).value_or(fallback);
 }
 
 void load_env(const std::string& file) {
@@ -85,8 +102,8 @@ void load_env(const std::string& file) {
 	ss << in.rdbuf();
 
 	for (const auto& kv : parse_env(ss.str())) {
-		if (std::getenv(kv.first.c_str())) continue;
 #ifdef _WIN32
+		if (read_env(kv.first.c_str()).has_value()) continue;
 		_putenv_s(kv.first.c_str(), kv.second.c_str());
 #else
 		setenv(kv.first.c_str(), kv.second.c_str(), 0);

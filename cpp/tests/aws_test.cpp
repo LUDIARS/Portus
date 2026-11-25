@@ -1,7 +1,18 @@
 #include "portus/aws.hpp"
+#include "../src/aws/expiration.hpp"
 #include "test.hpp"
 
 using namespace portus;
+
+TEST(aws_credential_expiration, "AWS: 有効期限を UTC で読み、不正な日付を拒む") {
+	CHECK_EQ(detail::parse_iso_time("2026-01-02T03:04:05Z"), 1767323045000LL);
+	CHECK_EQ(detail::parse_iso_time("2000-02-29T00:00:00Z"), 951782400000LL);
+	CHECK_EQ(detail::parse_iso_time("1969-12-31T23:59:59Z"), -1000);
+	CHECK_EQ(detail::parse_iso_time("2026-01-02T03:04:05.123Z"), 1767323045000LL);
+	CHECK_EQ(detail::parse_iso_time("1900-02-29T00:00:00Z"), 0);
+	CHECK_EQ(detail::parse_iso_time("2026-01-02T03:04:"), 0);
+	CHECK_EQ(detail::parse_iso_time("2026-01-02T03:04:0xZ"), 0);
+}
 
 //署名値は秘密鍵とスコープだけで決まり、アクセスキー ID は Credential= に載るだけで計算に入らない。
 //そのため ID はキー形式でないダミーにし、署名値は AWS ドキュメントの例 (S3 GET Object) と照合する

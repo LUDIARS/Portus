@@ -8,6 +8,10 @@
 #include "portus/util.hpp"
 #include "test.hpp"
 
+#include <algorithm>
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <memory>
 
 using namespace portus;
@@ -78,6 +82,28 @@ TEST(env_parse, ".env の解析") {
 	CHECK_EQ(get("D"), "raw\\n");
 	CHECK_EQ(get("E"), "value");
 	CHECK_EQ(get("1BAD"), "<none>");
+}
+
+TEST(env_load, ".env は未設定のキーだけを補い、既存値を保つ") {
+	std::string key = "PORTUS_TEST_ENV_" + uuidv4();
+	std::replace(key.begin(), key.end(), '-', '_');
+	const auto file = std::filesystem::temp_directory_path() / (key + ".env");
+	CHECK_EQ(get_env(key.c_str(), "fallback"), "fallback");
+
+	std::ofstream(file, std::ios::binary) << key << "=first\n";
+	load_env(file.string());
+	CHECK_EQ(get_env(key.c_str(), "fallback"), "first");
+
+	std::ofstream(file, std::ios::binary) << key << "=second\n";
+	load_env(file.string());
+	CHECK_EQ(get_env(key.c_str(), "fallback"), "first");
+
+#ifdef _WIN32
+	_putenv_s(key.c_str(), "");
+#else
+	unsetenv(key.c_str());
+#endif
+	std::filesystem::remove(file);
 }
 
 TEST(uuid_format, "uuidv4 の形式") {

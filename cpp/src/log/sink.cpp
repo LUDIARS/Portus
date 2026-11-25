@@ -6,6 +6,8 @@
 
 #ifdef _WIN32
 #include <share.h>
+#include "augur/contract_runtime.hpp" /* augur-inject:import:53706b6e */
+#include "utf8_path.contract.hpp" /* augur-inject:contract-predicate:76e58816 */
 #endif
 
 namespace portus {
@@ -23,10 +25,10 @@ void ConsoleSink::flush() {
 namespace {
 
 //dir / prefix は UTF-8 として扱う。Windows の std::string からのパスは ANSI コードページとして解釈されるので、
-//  日本語のパスが別の名前になったり、path::string() が例外を投げたりする。u8path でワイド文字のパスにする
-std::filesystem::path utf8_path(const std::string& text) {
-	return std::filesystem::u8path(text);
-}
+//  char8_t で渡すと UTF-8 としてネイティブのパス表現に変換される。
+std::filesystem::path utf8_path(const std::string& text) { return ::augur::invoke_observed(::augur::ContractSpec{"C-6", "b5719474", "cpp/src/log/sink.cpp:27"}, contracts::utf8_path_checks, [&]() -> std::filesystem::path { /* augur-inject:contract-wrap:b5719474 */
+	return std::filesystem::path(std::u8string(text.begin(), text.end()));
+}, text); /* augur-inject:contract-end:b5719474 */ }
 
 std::FILE* open_append(const std::filesystem::path& path) {
 #ifdef _WIN32

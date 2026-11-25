@@ -52,14 +52,14 @@ struct EventLoop::Impl {
 
 	//ループが回っていれば積んで true。止まっていれば false (呼び出し側がその場で実行する)
 	bool post_if_running(Task& task) {
-		bool wake = false;
+		bool should_wake = false;
 		{
 			std::lock_guard<std::mutex> lock(mu);
 			if (!running.load()) return false;
-			wake = posted.empty();
+			should_wake = posted.empty();
 			posted.push_back(std::move(task));
 		}
-		if (wake) socket_send(this->wake[1], "w", 1);
+		if (should_wake) socket_send(wake[1], "w", 1);
 		return true;
 	}
 
@@ -87,7 +87,7 @@ struct EventLoop::Impl {
 	}
 };
 
-EventLoop::EventLoop() : impl_(new Impl()) {
+EventLoop::EventLoop() : impl_(std::make_unique<Impl>()) {
 	make_wake_pair(impl_->wake);
 }
 

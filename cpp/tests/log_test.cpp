@@ -74,7 +74,7 @@ TEST(log_file_async, "ログ: 専用スレッド経由で日別ファイルへ J
 	//日本語を含むパスでも書ける (Windows で ANSI コードページに落とすと別の名前になるか開けない)
 	const std::filesystem::path dir = std::filesystem::temp_directory_path() / std::filesystem::u8path("portus-log-ログ-" + uuidv4());
 	{
-		auto file = std::make_shared<DailyFileSink>(dir.u8string(), "svc");	//DailyFileSink のパスは UTF-8
+		auto file = std::make_shared<DailyFileSink>(dir.u8string(), "サービス");	//DailyFileSink のパスは UTF-8
 		auto async = std::make_shared<AsyncSink>(SinkList{ file });
 		Logger log("svc", LogLevel::Info, { async });
 		for (int i = 0; i < 500; ++i) log.info("line", Json::object({ { "i", i } }));
@@ -82,7 +82,7 @@ TEST(log_file_async, "ログ: 専用スレッド経由で日別ファイルへ J
 
 		int lines = 0;
 		for (const auto& entry : std::filesystem::directory_iterator(dir)) {
-			CHECK(entry.path().filename().string().rfind("svc-", 0) == 0);
+			CHECK(entry.path().filename().u8string().rfind("サービス-", 0) == 0);
 			std::ifstream in(entry.path());
 			std::string line;
 			while (std::getline(in, line)) {

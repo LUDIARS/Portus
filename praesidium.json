@@ -142,15 +142,15 @@
     },
     {
       "file": "cpp/src/aws/credentials.cpp",
-      "standard": "c++17",
+      "standard": "c++23",
       "includes": [
-        "cpp/include"
+        "cpp/include",
+        "cpp/src/paging"
       ],
       "defines": [
         "NOMINMAX",
         "WIN32_LEAN_AND_MEAN",
-        "_WIN32_WINNT=0x0A00",
-        "_CRT_SECURE_NO_WARNINGS"
+        "_WIN32_WINNT=0x0A00"
       ],
       "packages": [
         "odeum-openssl-3"
@@ -222,15 +222,14 @@
     },
     {
       "file": "cpp/src/core/env.cpp",
-      "standard": "c++17",
+      "standard": "c++23",
       "includes": [
         "cpp/include"
       ],
       "defines": [
         "NOMINMAX",
         "WIN32_LEAN_AND_MEAN",
-        "_WIN32_WINNT=0x0A00",
-        "_CRT_SECURE_NO_WARNINGS"
+        "_WIN32_WINNT=0x0A00"
       ],
       "packages": [
         "odeum-openssl-3"
@@ -238,15 +237,14 @@
     },
     {
       "file": "cpp/src/core/event_loop.cpp",
-      "standard": "c++17",
+      "standard": "c++23",
       "includes": [
         "cpp/include"
       ],
       "defines": [
         "NOMINMAX",
         "WIN32_LEAN_AND_MEAN",
-        "_WIN32_WINNT=0x0A00",
-        "_CRT_SECURE_NO_WARNINGS"
+        "_WIN32_WINNT=0x0A00"
       ],
       "packages": [
         "odeum-openssl-3"
@@ -510,15 +508,15 @@
     },
     {
       "file": "cpp/src/log/sink.cpp",
-      "standard": "c++17",
+      "standard": "c++23",
       "includes": [
-        "cpp/include"
+        "cpp/include",
+        "cpp/src/paging"
       ],
       "defines": [
         "NOMINMAX",
         "WIN32_LEAN_AND_MEAN",
-        "_WIN32_WINNT=0x0A00",
-        "_CRT_SECURE_NO_WARNINGS"
+        "_WIN32_WINNT=0x0A00"
       ],
       "packages": [
         "odeum-openssl-3"
