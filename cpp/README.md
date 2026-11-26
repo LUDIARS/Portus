@@ -120,6 +120,8 @@ loop.run();
 
 ## WebSocket
 
+HTTP と同じポートで受けるには `HttpServerOptions::websocket_upgrade` を設定する。認可コールバックと Actio 向けの組み込み例は [共有待ち受けの仕様](../spec/feature/shared-http-websocket.md) を参照。
+
 ```cpp
 #include "portus/ws.hpp"
 

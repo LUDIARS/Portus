@@ -11,6 +11,7 @@
 #include "portus/tcp_conn.hpp"
 #include "portus/thread_pool.hpp"
 #include "portus/util.hpp"
+#include "websocket_upgrade.hpp"
 
 namespace portus {
 
@@ -89,15 +90,19 @@ struct HttpServer::Impl : std::enable_shared_from_this<HttpServer::Impl> {
 	std::unique_ptr<ThreadPool> pool;
 	socket_t listener = kInvalidSocket;
 	std::unordered_map<std::uint64_t, std::shared_ptr<Conn>> conns;
+	detail::UpgradedWebSockets upgraded;
 	std::uint64_t next_id = 1;
 	std::uint64_t sweep_timer = 0;
 	std::uint64_t accept_timer = 0;
 	std::atomic<bool> closed{false};
 
 	Impl(EventLoop& loop_, HttpServerOptions options_) : loop(loop_), options(std::move(options_)), log(options.log) {
+		if (options.websocket_upgrade && !detail::valid_websocket_upgrade_options(*options.websocket_upgrade)) {
+			throw std::invalid_argument("invalid WebSocket upgrade options");
+		}
 		router = std::make_shared<const Router>(std::move(options.routes));
 		options.routes.clear();
-		if (options.worker_threads > 0) pool.reset(new ThreadPool(options.worker_threads, options.max_pending));
+		if (options.worker_threads > 0) pool = std::make_unique<ThreadPool>(options.worker_threads, options.max_pending);
 	}
 
 	std::shared_ptr<const Router> current_router() const {
@@ -132,7 +137,7 @@ struct HttpServer::Impl : std::enable_shared_from_this<HttpServer::Impl> {
 				if (!last_error_would_block()) back_off_accept();
 				return;
 			}
-			if (conns.size() >= options.max_connections) {
+			if (conns.size() + upgraded.live_count() >= options.max_connections) {
 				close_socket(fd);
 				continue;
 			}
@@ -203,6 +208,11 @@ struct HttpServer::Impl : std::enable_shared_from_this<HttpServer::Impl> {
 				}
 				conn->in.erase(0, consumed);
 				if (!accept_head(conn)) return;
+				if (options.websocket_upgrade && try_websocket_upgrade(conn, *options.websocket_upgrade)) return;
+				if (conn->body_len > 0 && header_has_token(conn->head.headers.get("expect"), "100-continue")) {
+					conn->tcp->write("HTTP/1.1 100 Continue\r\n\r\n");
+					if (conn->tcp->closed()) return;
+				}
 				conn->state = State::Body;
 			}
 
@@ -245,7 +255,38 @@ struct HttpServer::Impl : std::enable_shared_from_this<HttpServer::Impl> {
 		}
 
 		conn->body_len = static_cast<std::size_t>(length);
-		if (length > 0 && header_has_token(h.get("expect"), "100-continue")) conn->tcp->write("HTTP/1.1 100 Continue\r\n\r\n");
+		return true;
+	}
+
+	bool try_websocket_upgrade(const std::shared_ptr<Conn>& conn, const WebSocketUpgradeOptions& ws) {
+		const auto disposition = detail::inspect_websocket_upgrade(conn->head, ws.path, conn->body_len);
+		if (disposition == detail::UpgradeDisposition::Http) return false;
+		if (disposition == detail::UpgradeDisposition::BadRequest) {
+			reject(conn, 400, "invalid websocket upgrade.");
+			return true;
+		}
+
+		std::optional<Json> authorization;
+		try {
+			authorization = ws.authorize(conn->head, conn->remote);
+		} catch (...) {
+			if (!conn->tcp->closed()) reject(conn, 500, "internal error.");
+			return true;
+		}
+		if (conn->tcp->closed()) return true;
+		if (!authorization) {
+			reject(conn, 403, "forbidden.");
+			return true;
+		}
+
+		//HTTP の接続表と TCP への参照を手放してから、同じソケットの購読を WebSocket に渡す。
+		auto tcp = std::move(conn->tcp);
+		conns.erase(conn->id);
+		try {
+			upgraded.adopt(loop, ws, tcp, conn->head, *authorization, conn->in);
+		} catch (...) {
+			tcp->close();
+		}
 		return true;
 	}
 
@@ -455,6 +496,7 @@ struct HttpServer::Impl : std::enable_shared_from_this<HttpServer::Impl> {
 		for (const auto& kv : conns) all.push_back(kv.second);
 		for (const auto& conn : all) conn->tcp->close();
 		conns.clear();
+		upgraded.close();
 	}
 };
 

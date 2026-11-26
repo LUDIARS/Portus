@@ -39,6 +39,7 @@ add_library(portus STATIC
 	src/http/body.cpp
 	src/http/router.cpp
 	src/http/server.cpp
+	src/http/websocket_upgrade.cpp
 	src/ws/frame.cpp
 	src/ws/handshake.cpp
 	src/ws/socket.cpp
@@ -96,6 +97,7 @@ if(PORTUS_BUILD_TESTS)
 		tests/http_test.cpp
 		tests/server_test.cpp
 		tests/ws_test.cpp
+		tests/http_websocket_test.cpp
 		tests/redis_test.cpp
 		tests/mqtt_test.cpp
 		tests/net_test.cpp

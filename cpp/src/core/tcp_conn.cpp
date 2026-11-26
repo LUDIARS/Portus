@@ -17,7 +17,11 @@ void TcpConn::set_on_close(CloseFn fn) {
 }
 
 void TcpConn::set_on_drain(CloseFn fn) {
-	on_drain_ = std::make_shared<CloseFn>(std::move(fn));
+	on_drain_ = fn ? std::make_shared<CloseFn>(std::move(fn)) : nullptr;
+}
+
+void TcpConn::set_max_buffered(std::size_t max_buffered) {
+	max_buffered_ = max_buffered;
 }
 
 void TcpConn::start() {
@@ -39,8 +43,9 @@ void TcpConn::pause_read(bool paused) {
 void TcpConn::write(const std::string& data) {
 	std::shared_ptr<TcpConn> keep = shared_from_this();	//途中で閉じて持ち主に手放されても、戻るまで生かす
 	if (closed() || write_shut_ || data.empty()) return;
-	if (out_pos_ > 0 && out_pos_ == out_.size()) {
-		out_.clear();
+	//少しずつ送り続ける接続でも、送信済みの先頭部分を溜め続けない。
+	if (out_pos_ > 0 && out_pos_ >= buffered()) {
+		out_.erase(0, out_pos_);
 		out_pos_ = 0;
 	}
 	out_.append(data);

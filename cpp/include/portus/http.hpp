@@ -12,6 +12,7 @@
 
 #include "portus/event_loop.hpp"
 #include "portus/http_message.hpp"
+#include "portus/http_websocket.hpp"
 #include "portus/json.hpp"
 #include "portus/log.hpp"
 
@@ -134,6 +135,9 @@ struct HttpServerOptions {
 	//空でなければ Host ヘッダ (ポートを除く) がこの中に無い要求を 421 で拒否する
 	//ローカルサービスを直接ブラウザから叩ける場所で動かすときの DNS リバインディング対策
 	std::vector<std::string> allowed_hosts;
+
+	//設定した場合、HTTP と WebSocket に max_connections を共用する。
+	std::optional<WebSocketUpgradeOptions> websocket_upgrade;
 };
 
 //HTTP/1.1 サーバ。入出力はイベントループ、ハンドラはワーカースレッドで動く

@@ -2,6 +2,18 @@
   "version": 1,
   "native": [
     {
+      "file": "cpp/src/http/websocket_upgrade.cpp",
+      "standard": "c++23",
+      "includes": ["cpp/include", "cpp/src/http", "cpp/src/paging"],
+      "defines": ["NOMINMAX", "WIN32_LEAN_AND_MEAN", "_WIN32_WINNT=0x0A00"]
+    },
+    {
+      "file": "cpp/tests/http_websocket_test.cpp",
+      "standard": "c++17",
+      "includes": ["cpp/include", "cpp/tests"],
+      "defines": ["NOMINMAX", "WIN32_LEAN_AND_MEAN", "_WIN32_WINNT=0x0A00"]
+    },
+    {
       "file": "cpp/src/core/file_follow.cpp",
       "standard": "c++23",
       "includes": ["cpp/include", "cpp/include/portus", "cpp/src/core", "cpp/src/paging", "cpp/src/paging/augur"],

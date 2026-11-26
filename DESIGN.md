@@ -79,6 +79,8 @@ bin/portus-dev.js   tsc --watch + 再起動 / ホットスワップの振り分�
 
 ## 4. C++ 版 (`cpp/`)
 
+HTTP と WebSocket を同じポートで受ける構成は [C++ の HTTP・WebSocket 共有待ち受け](spec/feature/shared-http-websocket.md) に定める。
+
 §0〜§1 の決め事はそのまま引き継ぐ。違いと追加だけを書く。使い方は `cpp/README.md`、TypeScript 版から変えた点は `docs/cpp-review.md`。
 
 ### 4.1 なぜ作るか

@@ -38,5 +38,11 @@
     "symbol": "portus::utf8_path",
     "file": "cpp/src/log/sink.cpp",
     "module": "cpp/src/log/utf8_path.contract.hpp"
+  }, {
+    "id": "C-7",
+    "criterion": "C-7 valid_websocket_upgrade_options(options): 明示されたパス、認可と接続のコールバック、正のバッファーとペイロード上限を要求する",
+    "symbol": "portus::detail::valid_websocket_upgrade_options",
+    "file": "cpp/src/http/websocket_upgrade.cpp",
+    "module": "cpp/src/http/websocket_upgrade.contract.hpp"
   }]
 }

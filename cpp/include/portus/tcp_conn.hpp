@@ -24,6 +24,7 @@ public:
 	void set_on_data(DataFn fn);	//実行中のコールバックから差し替えてもよい
 	void set_on_close(CloseFn fn);	//閉じたときに 1 回だけ呼ばれる
 	void set_on_drain(CloseFn fn);	//溜まっていた送信待ちを送り切ったとき (write の中では呼ばない)
+	void set_max_buffered(std::size_t max_buffered);	//プロトコル切り替え後の送信待ち上限
 
 	void start();
 	void write(const std::string& data);

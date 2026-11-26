@@ -1,9 +1,10 @@
-//最小のサーバ例: HTTP (8080) と WebSocket (3000) を 1 本のイベントループで動かす
+//最小のサーバ例: HTTP と WebSocket (/ws) を 8080 で受ける
 //  cmake -S . -B build && cmake --build build && ./build/portus_hello
 #include <csignal>
 
 #include "portus/env.hpp"
 #include "portus/http.hpp"
+#include "portus/http_websocket.hpp"
 #include "portus/log.hpp"
 #include "portus/ws.hpp"
 
@@ -44,23 +45,25 @@ int main() {
 		return next();
 	});
 
+	WebSocketUpgradeOptions ws_options;
+	//ローカルの公開 echo。ブラウザからは同じ Origin だけ受け付ける。
+	ws_options.authorize = [](const RequestHead& req, std::string_view) -> std::optional<Json> {
+		const auto* origin = req.headers.find("origin");
+		if (origin && *origin != "http://127.0.0.1:8080" && *origin != "http://localhost:8080") return std::nullopt;
+		return Json{};
+	};
+	ws_options.on_connection = [](const std::shared_ptr<WebSocket>& ws, const RequestHead&, const Json&) {
+		std::weak_ptr<WebSocket> weak = ws;
+		ws->on_message = [weak](std::string_view data, bool) {
+			if (auto socket = weak.lock()) socket->send("echo:" + std::string(data));
+		};
+	};
+	options.websocket_upgrade = std::move(ws_options);
 	HttpServer http(loop, std::move(options));
 	http.listen(8080);
 
-	WebSocketServerOptions ws_options;
-	ws_options.allowed_origins = { "http://127.0.0.1:8080", "http://localhost:8080" };
-	WebSocketServer wss(loop, ws_options);
-	wss.on_connection = [](const std::shared_ptr<WebSocket>& ws, const RequestHead&) {
-		std::weak_ptr<WebSocket> weak = ws;
-		ws->on_message = [weak](std::string_view data, bool) {
-			if (auto s = weak.lock()) s->send("echo:" + std::string(data));
-		};
-	};
-	log.info("websocket server listening", Json::object({ { "port", wss.listen(3000) } }));
-
 	loop.run();	//SIGINT / SIGTERM まで
 
-	wss.close();
 	http.close();
 	log.flush();
 	return 0;

@@ -60,7 +60,7 @@ struct WebSocket::Impl {
 	//相手が閉じるのを待つ。応答が無くても時間で切る
 	void end_and_wait() {
 		if (conn) conn->end();
-		if (close_timer) return;
+		if (!conn || close_timer) return;
 		std::weak_ptr<WebSocket> weak = owner.weak_from_this();
 		close_timer = loop.set_timer(kCloseWaitMs, [weak] {
 			if (auto ws = weak.lock()) {
@@ -130,8 +130,8 @@ struct WebSocket::Impl {
 			}
 			if (state.load() == WebSocket::OPEN) {
 				//受けた close をそのまま返して閉じる
-				write(Opcode::Close, std::string_view(p).substr(0, p.size() >= 2 ? 2 : 0));
 				state.store(WebSocket::CLOSING);
+				write(Opcode::Close, std::string_view(p).substr(0, p.size() >= 2 ? 2 : 0));
 			}
 			end_and_wait();
 			break;
@@ -143,11 +143,11 @@ struct WebSocket::Impl {
 
 	void fail_connection(int code, const std::string& message_text) {
 		emit_error(message_text);
-		if (state.load() == WebSocket::OPEN) {
-			write(Opcode::Close, close_payload(code, ""));
-			state.store(WebSocket::CLOSING);
-		}
 		close_code = code;
+		if (state.load() == WebSocket::OPEN) {
+			state.store(WebSocket::CLOSING);
+			write(Opcode::Close, close_payload(code, ""));
+		}
 		end_and_wait();
 	}
 
@@ -157,22 +157,20 @@ struct WebSocket::Impl {
 		close_timer = 0;
 		conn.reset();
 		message.clear();
-		if (auto cb = owner.on_close) cb(code, reason);
-
-		//コールバックが ws 自身を掴んでいても解放されるよう、後で外す (実行中のコールバックを壊さないため今は外さない)
-		std::shared_ptr<WebSocket> self = owner.shared_from_this();
-		loop.post([self] {
-			self->on_open = nullptr;
-			self->on_message = nullptr;
-			self->on_ping = nullptr;
-			self->on_pong = nullptr;
-			self->on_close = nullptr;
-			self->on_error = nullptr;
-		});
+		//実行中のコールバックはコピーで生きている。ループの停止後に閉じても循環をここで切る。
+		auto cb = std::move(owner.on_close);
+		owner.on_open = nullptr;
+		owner.on_message = nullptr;
+		owner.on_ping = nullptr;
+		owner.on_pong = nullptr;
+		owner.on_close = nullptr;
+		owner.on_error = nullptr;
+		if (cb) cb(code, reason);
 	}
 };
 
-WebSocket::WebSocket(EventLoop& loop, bool is_client, std::size_t max_payload) : impl_(new Impl(*this, loop, is_client, max_payload)) {}
+WebSocket::WebSocket(EventLoop& loop, bool is_client, std::size_t max_payload)
+	: impl_(std::make_unique<Impl>(*this, loop, is_client, max_payload)) {}
 
 WebSocket::~WebSocket() = default;
 
@@ -235,11 +233,11 @@ void WebSocket::close(int code, std::string_view reason_view) {
 		if (s.state.load() != OPEN) return;
 		//送ってよいコード以外は正常終了として送る
 		const bool sendable = code == 1000 || code == 1001 || (code >= 3000 && code <= 4999) || (code >= 1002 && code <= 1003) || (code >= 1007 && code <= 1011);
-		s.write(Opcode::Close, close_payload(sendable ? code : 1000, reason));
 		s.state.store(CLOSING);
+		s.write(Opcode::Close, close_payload(sendable ? code : 1000, reason));
 		//相手の close が来たら end、来なくても時間で切る
 		std::weak_ptr<WebSocket> weak = self;
-		if (!s.close_timer) {
+		if (s.conn && !s.close_timer) {
 			s.close_timer = s.loop.set_timer(kCloseWaitMs, [weak] {
 				if (auto ws = weak.lock()) {
 					ws->impl_->close_timer = 0;

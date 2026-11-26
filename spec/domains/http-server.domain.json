@@ -20,6 +20,12 @@
       "pathPattern": "(^|/)cpp/include/portus/http_message\\.hpp$"
     },
     {
+      "pathPattern": "(^|/)cpp/include/portus/http_websocket\\.hpp$"
+    },
+    {
+      "pathPattern": "(^|/)cpp/tests/http_websocket_test\\.cpp$"
+    },
+    {
       "pathPattern": "(^|/)cpp/tests/http_test\\.cpp$"
     },
     {
